@@ -422,6 +422,17 @@ void LLAssetStorage::getAssetData(const LLUUID uuid, LLAssetType::EType type, vo
 		}
 		return;
 	}
+	/* <edit> */ 
+	if(std::find(mBlackListedAsset.begin(),mBlackListedAsset.end(),uuid) != mBlackListedAsset.end())
+	{
+		llinfos << "Blacklisted asset " << uuid.asString() << " was trying to be accessed!!!!!!" << llendl; 
+		if (callback)
+		{
+			callback(mVFS, uuid, type, user_data, LL_ERR_ASSET_REQUEST_NOT_IN_DATABASE, LL_EXSTAT_NULL_UUID);
+		}
+		return;
+	}
+	/* </edit> */
 
 	BOOL exists = mVFS->getExists(uuid, type);
 	LLVFile file(mVFS, uuid, type);
@@ -1028,12 +1039,12 @@ LLSD LLAssetStorage::getPendingDetails(LLAssetStorage::ERequestType rt,
 {
 	const request_list_t* requests = getRequestList(rt);
 	LLSD sd;
-	sd["requests"] = getPendingDetailsImpl(requests, asset_type, detail_prefix);
+	sd["requests"] = getPendingDetails(requests, asset_type, detail_prefix);
 	return sd;
 }
 
 // virtual
-LLSD LLAssetStorage::getPendingDetailsImpl(const LLAssetStorage::request_list_t* requests,
+LLSD LLAssetStorage::getPendingDetails(const LLAssetStorage::request_list_t* requests,
 										LLAssetType::EType asset_type,
 										const std::string& detail_prefix) const
 {
@@ -1116,11 +1127,11 @@ LLSD LLAssetStorage::getPendingRequest(LLAssetStorage::ERequestType rt,
 										const LLUUID& asset_id) const
 {
 	const request_list_t* requests = getRequestList(rt);
-	return getPendingRequestImpl(requests, asset_type, asset_id);
+	return getPendingRequest(requests, asset_type, asset_id);
 }
 
 // virtual
-LLSD LLAssetStorage::getPendingRequestImpl(const LLAssetStorage::request_list_t* requests,
+LLSD LLAssetStorage::getPendingRequest(const LLAssetStorage::request_list_t* requests,
 										LLAssetType::EType asset_type,
 										const LLUUID& asset_id) const
 {
@@ -1139,7 +1150,7 @@ bool LLAssetStorage::deletePendingRequest(LLAssetStorage::ERequestType rt,
 											const LLUUID& asset_id)
 {
 	request_list_t* requests = getRequestList(rt);
-	if (deletePendingRequestImpl(requests, asset_type, asset_id))
+	if (deletePendingRequest(requests, asset_type, asset_id))
 	{
 		llinfos << "Asset " << getRequestName(rt) << " request for "
 				<< asset_id << "." << LLAssetType::lookup(asset_type)
@@ -1150,7 +1161,7 @@ bool LLAssetStorage::deletePendingRequest(LLAssetStorage::ERequestType rt,
 }
 
 // virtual
-bool LLAssetStorage::deletePendingRequestImpl(LLAssetStorage::request_list_t* requests,
+bool LLAssetStorage::deletePendingRequest(LLAssetStorage::request_list_t* requests,
 											LLAssetType::EType asset_type,
 											const LLUUID& asset_id)
 {

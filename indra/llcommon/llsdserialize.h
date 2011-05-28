@@ -43,7 +43,7 @@
  * @class LLSDParser
  * @brief Abstract base class for LLSD parsers.
  */
-class LL_COMMON_API LLSDParser : public LLRefCount
+class LLSDParser : public LLRefCount
 {
 protected:
 	/** 
@@ -220,7 +220,7 @@ protected:
  * @class LLSDNotationParser
  * @brief Parser which handles the original notation format for LLSD.
  */
-class LL_COMMON_API LLSDNotationParser : public LLSDParser
+class LLSDNotationParser : public LLSDParser
 {
 protected:
 	/** 
@@ -293,7 +293,7 @@ private:
  * @class LLSDXMLParser
  * @brief Parser which handles XML format LLSD.
  */
-class LL_COMMON_API LLSDXMLParser : public LLSDParser
+class LLSDXMLParser : public LLSDParser
 {
 protected:
 	/** 
@@ -341,7 +341,7 @@ private:
  * @class LLSDBinaryParser
  * @brief Parser which handles binary formatted LLSD.
  */
-class LL_COMMON_API LLSDBinaryParser : public LLSDParser
+class LLSDBinaryParser : public LLSDParser
 {
 protected:
 	/** 
@@ -406,7 +406,7 @@ private:
  * @class LLSDFormatter
  * @brief Abstract base class for formatting LLSD.
  */
-class LL_COMMON_API LLSDFormatter : public LLRefCount
+class LLSDFormatter : public LLRefCount
 {
 protected:
 	/** 
@@ -478,7 +478,7 @@ protected:
  * @class LLSDNotationFormatter
  * @brief Formatter which outputs the original notation format for LLSD.
  */
-class LL_COMMON_API LLSDNotationFormatter : public LLSDFormatter
+class LLSDNotationFormatter : public LLSDFormatter
 {
 protected:
 	/** 
@@ -519,7 +519,7 @@ public:
  * @class LLSDXMLFormatter
  * @brief Formatter which outputs the LLSD as XML.
  */
-class LL_COMMON_API LLSDXMLFormatter : public LLSDFormatter
+class LLSDXMLFormatter : public LLSDFormatter
 {
 protected:
 	/** 
@@ -587,7 +587,7 @@ protected:
  * Map: '{' + 4 byte integer size  every(key + value) + '}'<br>
  *  map keys are serialized as 'k' + 4 byte integer size + string
  */
-class LL_COMMON_API LLSDBinaryFormatter : public LLSDFormatter
+class LLSDBinaryFormatter : public LLSDFormatter
 {
 protected:
 	/** 
@@ -676,7 +676,7 @@ typedef LLSDOStreamer<LLSDXMLFormatter>			LLSDXMLStreamer;
  * @class LLSDSerialize
  * @brief Serializer / deserializer for the various LLSD formats
  */
-class LL_COMMON_API LLSDSerialize
+class LLSDSerialize
 {
 public:
 	enum ELLSD_Serialize

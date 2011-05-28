@@ -104,6 +104,7 @@
 #include "llfloaternamedesc.h"
 #include "llfloaterpreference.h"
 #include "llfloatersnapshot.h"
+#include "llfloaterteleporthistory.h"
 #include "llfloatertools.h"
 #include "llfloaterworldmap.h"
 #include "llfocusmgr.h"
@@ -1930,6 +1931,10 @@ void LLViewerWindow::initWorldUI()
 		gFloaterWorldMap = new LLFloaterWorldMap();
 		gFloaterWorldMap->setVisible(FALSE);
 
+		// open teleport history floater and hide it initially
+		gFloaterTeleportHistory = new LLFloaterTeleportHistory();
+		gFloaterTeleportHistory->setVisible(FALSE);
+
 		//
 		// Tools for building
 		//
@@ -2350,7 +2355,7 @@ void LLViewerWindow::draw()
 		// Draw tooltips
 		// Adjust their rectangle so they don't go off the top or bottom
 		// of the screen.
-		if( mToolTip && mToolTip->getVisible() && !mToolTipBlocked )
+		if( mToolTip && mToolTip->getVisible() )
 		{
 			glMatrixMode(GL_MODELVIEW);
 			LLUI::pushMatrix();
@@ -2397,16 +2402,6 @@ void LLViewerWindow::draw()
 // Takes a single keydown event, usually when UI is visible
 BOOL LLViewerWindow::handleKey(KEY key, MASK mask)
 {
-	// Hide tooltips on keypress
-	mToolTipBlocked = TRUE; // block until next time mouse is moved
-
-	// Also hide hover info on keypress
-	if (gHoverView)
-	{
-		gHoverView->cancelHover();
-		gHoverView->setTyping(TRUE);
-	}
-
 	if (gFocusMgr.getKeyboardFocus() 
 		&& !(mask & (MASK_CONTROL | MASK_ALT))
 		&& !gFocusMgr.getKeystrokesOnly())
@@ -2427,6 +2422,17 @@ BOOL LLViewerWindow::handleKey(KEY key, MASK mask)
 		{
 			return TRUE;
 		}
+	}
+
+	// Hide tooltips on keypress
+	mToolTipBlocked = TRUE; // block until next time mouse is moved
+
+	// Also hide hover info on keypress
+	if (gHoverView)
+	{
+		gHoverView->cancelHover();
+
+		gHoverView->setTyping(TRUE);
 	}
 
 	// Explicit hack for debug menu.
@@ -2459,6 +2465,13 @@ BOOL LLViewerWindow::handleKey(KEY key, MASK mask)
 	    && ('5' == key))
 	{
 		LLFloaterNotificationConsole::showInstance();
+		return TRUE;
+	}
+
+	// handle shift-escape key (reset camera view)
+	if (key == KEY_ESCAPE && mask == MASK_SHIFT)
+	{
+		handle_reset_view();
 		return TRUE;
 	}
 

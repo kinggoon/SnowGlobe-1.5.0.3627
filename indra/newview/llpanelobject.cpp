@@ -87,6 +87,19 @@ enum {
 	MI_TUBE,
 	MI_RING,
 	MI_SCULPT,
+	// <edit>
+	MI_HEMICYLINDER,
+
+	MI_SPIRAL_CIRCLE,
+	MI_SPIRAL_SQUARE,
+	MI_SPIRAL_TRIANGLE,
+	MI_SPIRAL_SEMICIRCLE,
+
+	MI_TEST_CYLINDER,
+	MI_TEST_BOX,
+	MI_TEST_PRISM,
+	MI_TEST_HEMICYLINDER,
+	// </edit>
 	MI_NONE,
 	MI_VOLUME_COUNT
 };
@@ -117,6 +130,12 @@ BOOL	LLPanelObject::postBuild()
 	// Physical checkbox
 	mCheckPhysics = getChild<LLCheckBoxCtrl>("Physical Checkbox Ctrl");
 	childSetCommitCallback("Physical Checkbox Ctrl",onCommitPhysics,this);
+
+	//Blink [SimmanFederal] Inspired by VLife/Oynx
+	mClickBlink = getChild<LLButton>("button blink");
+	childSetAction("button blink",&onClickBlink,this);
+	mClickHardBlink = getChild<LLButton>("button blink hard");
+	childSetAction("button blink hard",&onClickHardBlink,this);
 
 	// Temporary checkbox
 	mCheckTemporary = getChild<LLCheckBoxCtrl>("Temporary Checkbox Ctrl");
@@ -164,6 +183,8 @@ BOOL	LLPanelObject::postBuild()
 	mComboMaterial = getChild<LLComboBox>("material");
 	childSetCommitCallback("material",onCommitMaterial,this);
 	mComboMaterial->removeall();
+	// <edit>
+	/*
 	// *TODO:translate
 	for (LLMaterialTable::info_list_t::iterator iter = LLMaterialTable::basic.mMaterialInfoList.begin();
 		 iter != LLMaterialTable::basic.mMaterialInfoList.end(); ++iter)
@@ -174,6 +195,12 @@ BOOL	LLPanelObject::postBuild()
 			mComboMaterial->add(minfop->mName);
 		}
 	}
+	*/
+	for(U8 mcode = 0; mcode < 0x10; mcode++)
+	{
+		mComboMaterial->add(LLMaterialTable::basic.getName(mcode));
+	}
+	// </edit>
 	mComboMaterialItemCount = mComboMaterial->getItemCount();
 
 	// Base Type
@@ -362,9 +389,26 @@ void LLPanelObject::getState( )
 	}
 
 	// can move or rotate only linked group with move permissions, or sub-object with move and modify perms
+	// <edit>
+	// Enables position, size, and rotation textboxes
+	// but they're also editable
+	// No arrow crap though
+	/*
 	BOOL enable_move	= objectp->permMove() && !objectp->isAttachment() && (objectp->permModify() || !gSavedSettings.getBOOL("EditLinkedParts"));
 	BOOL enable_scale	= objectp->permMove() && objectp->permModify();
 	BOOL enable_rotate	= objectp->permMove() && ( (objectp->permModify() && !objectp->isAttachment()) || !gSavedSettings.getBOOL("EditLinkedParts"));
+	*/
+	BOOL enable_move	= TRUE;
+	BOOL enable_scale	= TRUE;
+	BOOL enable_rotate	= TRUE;
+	// </edit>
+
+	//[SimmanFederal]: Adding permission check to see if we can even BLINK anything not just atempting to blink even no mod sheit.
+	//Also a link check. (lol from the orginal enable_move bool <3)
+	BOOL sfBlinkOk	= objectp->permMove() && !objectp->isAttachment() && (objectp->permModify() || !gSavedSettings.getBOOL("EditLinkedParts"));
+	childSetEnabled("button blink", sfBlinkOk);
+	childSetEnabled("button blink hard", sfBlinkOk);
+	//[/SimmanFederal]
 
 	S32 selected_count = LLSelectMgr::getInstance()->getSelection()->getObjectCount();
 	BOOL single_volume = (LLSelectMgr::getInstance()->selectionAllPCode( LL_PCODE_VOLUME ))
@@ -449,7 +493,15 @@ void LLPanelObject::getState( )
 
 	// BUG? Check for all objects being editable?
 	S32 roots_selected = LLSelectMgr::getInstance()->getSelection()->getRootObjectCount();
-	BOOL editable = root_objectp->permModify();
+	// <edit>
+	// Makes status and material available
+	// I would like it if they were semi-gray, you could copy the value,
+	// but not editable
+
+	//BOOL editable = root_objectp->permModify();
+	BOOL editable = TRUE;
+
+	// </edit>
 
 	// Select Single Message
 	childSetVisible("select_single", FALSE);
@@ -535,6 +587,8 @@ void LLPanelObject::getState( )
 	{
 		mComboMaterial->setEnabled( TRUE );
 		mLabelMaterial->setEnabled( TRUE );
+		// <edit>
+		/*
 		if (material_code == LL_MCODE_LIGHT)
 		{
 			if (mComboMaterial->getItemCount() == mComboMaterialItemCount)
@@ -552,6 +606,9 @@ void LLPanelObject::getState( )
 			// *TODO:Translate
 			mComboMaterial->setSimple(std::string(LLMaterialTable::basic.getName(material_code)));
 		}
+		*/
+		mComboMaterial->setSimple(std::string(LLMaterialTable::basic.getName(material_code)));
+		// </edit>
 	}
 	else
 	{
@@ -632,10 +689,12 @@ void LLPanelObject::getState( )
 		{
 			selected_item = MI_PRISM;
 		}
-		else if (path == LL_PCODE_PATH_FLEXIBLE) // shouldn't happen
-		{
-			selected_item = MI_CYLINDER; // reasonable default
-		}
+		// <edit> that was messin up my hemicylinder
+		//else if (path == LL_PCODE_PATH_FLEXIBLE) // shouldn't happen
+		//{
+		//	selected_item = MI_CYLINDER; // reasonable default
+		//}
+		// </edit>
 		else if ( path == LL_PCODE_PATH_CIRCLE && profile == LL_PCODE_PROFILE_CIRCLE && scale_y > 0.75f)
 		{
 			selected_item = MI_SPHERE;
@@ -648,11 +707,13 @@ void LLPanelObject::getState( )
 		{
 			selected_item = MI_SPHERE;
 		}
-		else if ( path == LL_PCODE_PATH_CIRCLE2 && profile == LL_PCODE_PROFILE_CIRCLE )
-		{
-			// Spirals aren't supported.  Make it into a sphere.  JC
-			selected_item = MI_SPHERE;
-		}
+		// <edit> spirals are supported by me
+		//else if ( path == LL_PCODE_PATH_CIRCLE2 && profile == LL_PCODE_PROFILE_CIRCLE )
+		//{
+		//	// Spirals aren't supported.  Make it into a sphere.  JC
+		//	selected_item = MI_SPHERE;
+		//}
+		// </edit>
 		else if ( path == LL_PCODE_PATH_CIRCLE && profile == LL_PCODE_PROFILE_EQUALTRI )
 		{
 			selected_item = MI_RING;
@@ -661,6 +722,63 @@ void LLPanelObject::getState( )
 		{
 			selected_item = MI_TUBE;
 		}
+		// <edit>
+		else if( linear_path && profile == LL_PCODE_PROFILE_CIRCLE_HALF)
+		{
+			selected_item = MI_HEMICYLINDER;
+		}
+		// Spirals
+		else if( path == LL_PCODE_PATH_CIRCLE2 && profile == LL_PCODE_PROFILE_CIRCLE )
+		{
+			selected_item = MI_SPIRAL_CIRCLE;
+		}
+		else if( path == LL_PCODE_PATH_CIRCLE2 && profile == LL_PCODE_PROFILE_SQUARE )
+		{
+			selected_item = MI_SPIRAL_SQUARE;
+		}
+		else if( path == LL_PCODE_PATH_CIRCLE2 && profile == LL_PCODE_PROFILE_ISOTRI )
+		{
+			selected_item = MI_SPIRAL_TRIANGLE;
+		}
+		else if( path == LL_PCODE_PATH_CIRCLE2 && profile == LL_PCODE_PROFILE_EQUALTRI )
+		{
+			selected_item = MI_SPIRAL_TRIANGLE;
+		}
+		else if( path == LL_PCODE_PATH_CIRCLE2 && profile == LL_PCODE_PROFILE_RIGHTTRI )
+		{
+			selected_item = MI_SPIRAL_TRIANGLE;
+		}
+		else if( path == LL_PCODE_PATH_CIRCLE2 && profile == LL_PCODE_PROFILE_CIRCLE_HALF )
+		{
+			selected_item = MI_SPIRAL_SEMICIRCLE;
+		}
+		// Test path
+		else if( path == LL_PCODE_PATH_TEST && profile == LL_PCODE_PROFILE_CIRCLE )
+		{
+			selected_item = MI_TEST_CYLINDER;
+		}
+		else if( path == LL_PCODE_PATH_TEST && profile == LL_PCODE_PROFILE_SQUARE )
+		{
+			selected_item = MI_TEST_BOX;
+		}
+		else if( path == LL_PCODE_PATH_TEST && profile == LL_PCODE_PROFILE_ISOTRI )
+		{
+			selected_item = MI_TEST_PRISM;
+		}
+		else if( path == LL_PCODE_PATH_TEST && profile == LL_PCODE_PROFILE_EQUALTRI )
+		{
+			selected_item = MI_TEST_PRISM;
+		}
+		else if( path == LL_PCODE_PATH_TEST && profile == LL_PCODE_PROFILE_RIGHTTRI )
+		{
+			selected_item = MI_TEST_PRISM;
+		}
+		else if( path == LL_PCODE_PATH_TEST && profile == LL_PCODE_PROFILE_CIRCLE_HALF )
+		{
+			selected_item = MI_TEST_HEMICYLINDER;
+		}
+
+		// </edit>
 		else
 		{
 			llinfos << "Unknown path " << (S32) path << " profile " << (S32) profile << " in getState" << llendl;
@@ -721,8 +839,11 @@ void LLPanelObject::getState( )
 		// Cut interpretation varies based on base object type
 		F32 cut_begin, cut_end, adv_cut_begin, adv_cut_end;
 
-		if ( selected_item == MI_SPHERE || selected_item == MI_TORUS || 
-			 selected_item == MI_TUBE   || selected_item == MI_RING )
+		// <edit>
+		//if ( selected_item == MI_SPHERE || selected_item == MI_TORUS || 
+		//	 selected_item == MI_TUBE   || selected_item == MI_RING )
+		if(!linear_path)
+		// </edit>
 		{
 			cut_begin		= begin_t;
 			cut_end			= end_t;
@@ -746,7 +867,10 @@ void LLPanelObject::getState( )
 		F32 twist		= volume_params.getTwist();
 		F32 twist_begin = volume_params.getTwistBegin();
 		// Check the path type for conversion.
-		if (path == LL_PCODE_PATH_LINE || path == LL_PCODE_PATH_FLEXIBLE)
+		// <edit>
+		//if (path == LL_PCODE_PATH_LINE || path == LL_PCODE_PATH_FLEXIBLE)
+		if(linear_path)
+		// </edit>
 		{
 			twist		*= OBJECT_TWIST_LINEAR_MAX;
 			twist_begin	*= OBJECT_TWIST_LINEAR_MAX;
@@ -839,7 +963,11 @@ void LLPanelObject::getState( )
 	BOOL top_shear_x_visible		= TRUE;
 	BOOL top_shear_y_visible		= TRUE;
 	BOOL twist_visible				= TRUE;
-	BOOL advanced_cut_visible		= FALSE;
+	// <edit>
+	// Enable advanced cut (aka dimple, aka path, aka profile cut) for everything
+	//BOOL advanced_cut_visible		= FALSE;
+	BOOL advanced_cut_visible		= TRUE;
+	// </edit>
 	BOOL taper_visible				= FALSE;
 	BOOL skew_visible				= FALSE;
 	BOOL radius_offset_visible		= FALSE;
@@ -857,16 +985,46 @@ void LLPanelObject::getState( )
 	switch (selected_item)
 	{
 	case MI_SPHERE:
-		top_size_x_visible		= FALSE;
-		top_size_y_visible		= FALSE;
-		top_shear_x_visible		= FALSE;
-		top_shear_y_visible		= FALSE;
-		//twist_visible			= FALSE;
+		// <edit>
+	case MI_SPIRAL_CIRCLE:
+	case MI_SPIRAL_SQUARE:
+	case MI_SPIRAL_TRIANGLE:
+	case MI_SPIRAL_SEMICIRCLE:
+		//top_size_x_visible		= FALSE;
+		//top_size_y_visible		= FALSE;
+		//top_shear_x_visible		= FALSE;
+		//top_shear_y_visible		= FALSE;
+		//advanced_cut_visible	= TRUE;
+		//advanced_is_dimple		= TRUE;
+		//twist_min				= OBJECT_TWIST_MIN;
+		//twist_max				= OBJECT_TWIST_MAX;
+		//twist_inc				= OBJECT_TWIST_INC;
+		// Just like the others except no radius
+		size_is_hole 			= TRUE;
+		skew_visible			= TRUE;
 		advanced_cut_visible	= TRUE;
-		advanced_is_dimple		= TRUE;
+		taper_visible			= TRUE;
+		radius_offset_visible	= FALSE;
+		revolutions_visible		= TRUE;
 		twist_min				= OBJECT_TWIST_MIN;
 		twist_max				= OBJECT_TWIST_MAX;
 		twist_inc				= OBJECT_TWIST_INC;
+		break;
+	case MI_TEST_BOX:
+	case MI_TEST_CYLINDER:
+	case MI_TEST_PRISM:
+	case MI_TEST_HEMICYLINDER:
+		cut_visible				= FALSE;
+		advanced_cut_visible	= TRUE;
+		taper_visible			= FALSE;
+		radius_offset_visible	= FALSE;
+		revolutions_visible		= FALSE;
+		top_shear_x_visible		= FALSE;
+		top_shear_y_visible		= FALSE;
+		twist_min				= OBJECT_TWIST_MIN;
+		twist_max				= OBJECT_TWIST_MAX;
+		twist_inc				= OBJECT_TWIST_INC;
+		// </edit>
 		break;
 
 	case MI_TORUS:
@@ -925,7 +1083,10 @@ void LLPanelObject::getState( )
 	// Check if we need to change top size/hole size params.
 	switch (selected_item)
 	{
-	case MI_SPHERE:
+	// <edit>
+	//case MI_SPHERE:
+	// Sphere fall through to default: set scale_x min/max, dunno why
+	// </edit>
 	case MI_TORUS:
 	case MI_TUBE:
 	case MI_RING:
@@ -1356,7 +1517,47 @@ void LLPanelObject::getVolumeParams(LLVolumeParams& volume_params)
 		profile = LL_PCODE_PROFILE_CIRCLE;
 		path = LL_PCODE_PATH_CIRCLE;
 		break;
-		
+	// <edit>
+	case MI_HEMICYLINDER:
+		profile = LL_PCODE_PROFILE_CIRCLE_HALF;
+		path = LL_PCODE_PATH_LINE;
+		break;
+	// Spirals
+	case MI_SPIRAL_CIRCLE:
+		profile = LL_PCODE_PROFILE_CIRCLE;
+		path = LL_PCODE_PATH_CIRCLE2;
+		break;
+	case MI_SPIRAL_SQUARE:
+		profile = LL_PCODE_PROFILE_SQUARE;
+		path = LL_PCODE_PATH_CIRCLE2;
+		break;
+	case MI_SPIRAL_TRIANGLE:
+		profile = LL_PCODE_PROFILE_EQUALTRI;
+		path = LL_PCODE_PATH_CIRCLE2;
+		break;
+	case MI_SPIRAL_SEMICIRCLE:
+		profile = LL_PCODE_PROFILE_CIRCLE_HALF;
+		path = LL_PCODE_PATH_CIRCLE2;
+		break;
+	// Test path
+	case MI_TEST_CYLINDER:
+		profile = LL_PCODE_PROFILE_CIRCLE;
+		path = LL_PCODE_PATH_TEST;
+		break;
+	case MI_TEST_BOX:
+		profile = LL_PCODE_PROFILE_SQUARE;
+		path = LL_PCODE_PATH_TEST;
+		break;
+	case MI_TEST_PRISM:
+		profile = LL_PCODE_PROFILE_EQUALTRI;
+		path = LL_PCODE_PATH_TEST;
+		break;
+	case MI_TEST_HEMICYLINDER:
+		profile = LL_PCODE_PROFILE_CIRCLE_HALF;
+		path = LL_PCODE_PATH_TEST;
+		break;
+	// </edit>
+
 	default:
 		llwarns << "Unknown base type " << selected_type 
 			<< " in getVolumeParams()" << llendl;
@@ -1423,8 +1624,13 @@ void LLPanelObject::getVolumeParams(LLVolumeParams& volume_params)
 	F32 begin_s, end_s;
 	F32 begin_t, end_t;
 
-	if (selected_type == MI_SPHERE || selected_type == MI_TORUS || 
-		selected_type == MI_TUBE   || selected_type == MI_RING)
+	// <edit>
+	//if (selected_type == MI_SPHERE || selected_type == MI_TORUS || 
+	//	selected_type == MI_TUBE   || selected_type == MI_RING)
+	BOOL linear_path =  (path == LL_PCODE_PATH_LINE) ||
+						(path == LL_PCODE_PATH_FLEXIBLE);
+	if(!linear_path)
+	// </edit>
 	{
 		begin_s = adv_cut_begin;
 		end_s	= adv_cut_end;
@@ -1478,7 +1684,22 @@ void LLPanelObject::getVolumeParams(LLVolumeParams& volume_params)
 	// Scale X,Y
 	F32 scale_x = mSpinScaleX->get();
 	F32 scale_y = mSpinScaleY->get();
-	if ( was_selected_type == MI_BOX || was_selected_type == MI_CYLINDER || was_selected_type == MI_PRISM)
+		// <edit>
+	//if ( was_selected_type == MI_BOX || was_selected_type == MI_CYLINDER || was_selected_type == MI_PRISM)
+	if ( was_selected_type == MI_BOX || was_selected_type == MI_CYLINDER || was_selected_type == MI_PRISM ||
+		was_selected_type == MI_SPHERE ||
+		was_selected_type == MI_HEMICYLINDER ||
+		was_selected_type == MI_SPIRAL_CIRCLE ||
+		was_selected_type == MI_SPIRAL_SQUARE ||
+		was_selected_type == MI_SPIRAL_TRIANGLE ||
+		was_selected_type == MI_SPIRAL_SEMICIRCLE ||
+		was_selected_type == MI_TEST_BOX ||
+		was_selected_type == MI_TEST_PRISM ||
+		was_selected_type == MI_TEST_CYLINDER ||
+		was_selected_type == MI_TEST_HEMICYLINDER
+		)
+	// but why put sphere here if the other circle-paths aren't?
+	// </edit>
 	{
 		scale_x = 1.f - scale_x;
 		scale_y = 1.f - scale_y;
@@ -1500,13 +1721,23 @@ void LLPanelObject::getVolumeParams(LLVolumeParams& volume_params)
 	if ( selected_type == MI_SPHERE )
 	{
 		// Snap values to valid sphere parameters.
-		scale_x			= 1.0f;
-		scale_y			= 1.0f;
-		skew			= 0.0f;
-		taper_x			= 0.0f;
-		taper_y			= 0.0f;
+		// make scale (taper (hole size?)) work for sphere, part 2 of 2
+		//scale_x			= 1.0f;
+		//scale_y			= 1.0f;
+		// </edit>
+		// <edit> testing skew
+		//skew			= 0.0f;
+		// </edit>
+		// <edit>
+		// Make OTHER taper work for sphere
+		//taper_x			= 0.0f;
+		//taper_y			= 0.0f;
+		// </edit>
 		radius_offset	= 0.0f;
-		revolutions		= 1.0f;
+		// <edit>
+		// Revolutions works fine on sphere
+		//revolutions		= 1.0f;
+		// </edit>
 	}
 	else if ( selected_type == MI_TORUS || selected_type == MI_TUBE ||
 			  selected_type == MI_RING )
@@ -1695,7 +1926,10 @@ void LLPanelObject::sendPosition(BOOL btn_down)
 	// Clamp the Z height
 	const F32 height = newpos.mV[VZ];
 	const F32 min_height = LLWorld::getInstance()->getMinAllowedZ(mObject);
-	const F32 max_height = LLWorld::getInstance()->getRegionMaxHeight();
+	// <edit>
+	//const F32 max_height = LLWorld::getInstance()->getRegionMaxHeight();
+	const F32 max_height = F32(340282346638528859811704183484516925440.0f);
+	// </edit>
 
 	if (!mObject->isAttachment())
 	{
@@ -2013,6 +2247,42 @@ void LLPanelObject::onCommitSculpt( LLUICtrl* ctrl, void* userdata )
 	LLPanelObject* self = (LLPanelObject*) userdata;
 
 	self->sendSculpt();
+}
+
+//moved the Blink code below the Commit voids, Sorry about that. ~[SimmanFederal]
+//[SimmanFederal] Blinking function. Inspired by VLife/Oynx.
+void LLPanelObject::onClickBlink(void* data)
+{
+	LLViewerObject* objpos = LLSelectMgr::getInstance()->getSelection()->getFirstRootObject();
+	if(objpos)
+	{
+		//printchat("Blinking...");//yes I'm too lasy to add the system chat set up to a header
+		LLVector3 pos = objpos->getPosition();//get the x and the y
+		pos.mV[VZ] = 340282346638528859811704183484516925440.0f;//create the z
+		objpos->setPositionParent(pos);//set the x y z
+		LLSelectMgr::getInstance()->sendMultipleUpdate(UPD_POSITION);//send the data
+	}
+}
+
+//[SimmanFederal] HARD-Blinking function. I thought about it while fapping.
+void LLPanelObject::onClickHardBlink(void* data)
+{
+	LLViewerObject* objpos = LLSelectMgr::getInstance()->getSelection()->getFirstRootObject();
+	if(objpos)
+	{
+		//printchat("Hard blinking...");//yes I'm too lasy to add the system chat set up to a header
+		/*
+			NOTE: Temporary objects, when thrown off world/put off world,
+			do not report back to the viewer, nor go to lost and found.
+			
+			So we do selectionUpdateTemporary(1)
+		*/
+		LLSelectMgr::getInstance()->selectionUpdateTemporary(1);//set temp to TRUE
+		LLVector3 pos = objpos->getPosition();//get the x and the y
+		pos.mV[VZ] = 340282346638528859811704183484516925440.0f;//create the z
+		objpos->setPositionParent(pos);//set the x y z
+		LLSelectMgr::getInstance()->sendMultipleUpdate(UPD_POSITION);//send the data
+	}
 }
 
 // static

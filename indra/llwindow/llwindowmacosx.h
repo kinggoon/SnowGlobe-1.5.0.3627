@@ -34,7 +34,6 @@
 #define LL_LLWINDOWMACOSX_H
 
 #include "llwindow.h"
-#include "lltimer.h"
 
 #include <Carbon/Carbon.h>
 #include <AGL/agl.h>

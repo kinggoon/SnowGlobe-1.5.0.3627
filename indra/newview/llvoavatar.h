@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 
+#include "imageids.h"			// IMG_INVISIBLE
 #include "llchat.h"
 #include "lldrawpoolalpha.h"
 #include "llviewerobject.h"
@@ -87,6 +88,11 @@ public:
 
 	static void updateImpostors();
 
+	// <edit>
+	void getClientInfo(std::string& clientTag, LLColor4& tagColor, BOOL useComment=FALSE);
+	std::string extraMetadata;
+	// </edit>
+	
 	//--------------------------------------------------------------------
 	// LLViewerObject interface
 	//--------------------------------------------------------------------
@@ -283,6 +289,9 @@ public:
 	void getOffObject();
 
 	BOOL isWearingAttachment( const LLUUID& inv_item_id );
+	// <edit> testzone attachpt
+	BOOL isWearingUnsupportedAttachment( const LLUUID& inv_item_id );
+	// </edit>
 	LLViewerObject* getWornAttachment( const LLUUID& inv_item_id );
 	const std::string getAttachedPointName(const LLUUID& inv_item_id);
 
@@ -339,7 +348,7 @@ public:
 	BOOL			teToColorParams( LLVOAvatarDefines::ETextureIndex te, const char* param_name[3] );
 
 	BOOL			isWearingWearableType( EWearableType type );
-	void			wearableUpdated( EWearableType type );
+	void			wearableUpdated(EWearableType type, BOOL upload_result = TRUE);
 
 	//--------------------------------------------------------------------
 	// texture compositing
@@ -501,6 +510,9 @@ public:
 	typedef std::map<S32, LLViewerJointAttachment*> attachment_map_t;
 	attachment_map_t mAttachmentPoints;
 	std::vector<LLPointer<LLViewerObject> > mPendingAttachment;
+	// <edit>
+	std::map<S32, LLUUID> mUnsupportedAttachmentPoints;
+	// </edit>
 
 	//--------------------------------------------------------------------
 	// static preferences that are controlled by user settings/menus
@@ -544,6 +556,7 @@ private:
 	BOOL mIsBuilt; // state of deferred character building
 	F32 mSpeedAccum; // measures speed (for diagnostics mostly).
 
+	BOOL mSupportsAlphaLayers; // For backwards compatibility, TRUE for 1.23+ clients
 	
 	// LLFrameTimer mUpdateLODTimer; // controls frequency of LOD change calculations
 	BOOL mDirtyMesh;
@@ -678,6 +691,18 @@ protected:
 	S32				getLocalDiscardLevel(LLVOAvatarDefines::ETextureIndex index);
 public:
 	static void updateFreezeCounter(S32 counter = 0 );
+// <edit>
+
+public:
+	//bool mNametagSaysIdle;
+	//bool mIdleForever;
+	//LLFrameTimer mIdleTimer;
+	//U32 mIdleMinutes;
+	LLUUID mFocusObject;
+	LLVector3d mFocusVector;
+	//void resetIdleTime();
+// </edit>
+
 private:
 	static S32 sFreezeCounter;
 	
@@ -693,7 +718,7 @@ private:
 	// Per-avatar information about texture data.
 	// To-do: Move this to private implementation class
 	//-----------------------------------------------------------------------------------------------
-private:
+
 	struct BakedTextureData
 	{
 		LLUUID			mLastTextureIndex;
@@ -704,6 +729,7 @@ private:
 		U32				mMaskTexName;
 		// Stores pointers to the joint meshes that this baked texture deals with
 		std::vector< LLViewerJointMesh * > mMeshes;  // std::vector<LLViewerJointMesh> mJoints[i]->mMeshParts
+
 	};
 	typedef std::vector<BakedTextureData> bakedtexturedata_vec_t;
 	bakedtexturedata_vec_t mBakedTextureData;
@@ -758,7 +784,7 @@ inline BOOL LLVOAvatar::isTextureDefined(U8 te) const
 
 inline BOOL LLVOAvatar::isTextureVisible(U8 te) const
 {
-	return ((isTextureDefined(te) || isSelf())
+	return ((isTextureDefined(te) || mIsSelf)
 			&& (getTEImage(te)->getID() != IMG_INVISIBLE 
 				|| LLDrawPoolAlpha::sShowDebugAlpha));
 }

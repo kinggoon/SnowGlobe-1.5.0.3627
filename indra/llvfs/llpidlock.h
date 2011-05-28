@@ -41,6 +41,8 @@ class LLFrameTimer;
 
 #include <windows.h>
 
+#define getpid GetCurrentProcessId
+
 #else	//Everyone Else
 
 #include <signal.h>

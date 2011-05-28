@@ -38,7 +38,7 @@
 class LLMetricsImpl;
 class LLSD;
 
-class LL_COMMON_API LLMetrics
+class LLMetrics
 {
 public:
 	LLMetrics();

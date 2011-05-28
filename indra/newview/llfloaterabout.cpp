@@ -64,6 +64,7 @@
 #include "lldxhardware.h"
 #endif
 
+extern LLCPUInfo gSysCPU;
 extern LLMemoryInfo gSysMemory;
 extern U32 gPacketsIn;
 
@@ -86,8 +87,10 @@ LLFloaterAbout::LLFloaterAbout()
 	LLUICtrlFactory::getInstance()->buildFloater(this, "floater_about.xml");
 
 	// Support for changing product name.
-	std::string title("About ");
-	title += LLAppViewer::instance()->getSecondLifeTitle();
+	//<edit>
+	std::string title("Aboot ");
+	title += "Inertia";
+	//</edit>
 	setTitle(title);
 
 	LLViewerTextEditor *support_widget = 
@@ -115,10 +118,13 @@ LLFloaterAbout::LLFloaterAbout()
 	// Version string
 	std::string version = LLAppViewer::instance()->getSecondLifeTitle()
 		+ llformat(" %d.%d.%d (%d) %s %s (%s)\n",
-				   LL_VERSION_MAJOR, LL_VERSION_MINOR, LL_VERSION_PATCH, LL_VIEWER_BUILD,
+				   gSavedSettings.getU32("SpecifiedVersionMaj"), gSavedSettings.getU32("SpecifiedVersionMin"), gSavedSettings.getU32("SpecifiedVersionPatch"), gSavedSettings.getU32("SpecifiedVersionBuild"),
 				   __DATE__, __TIME__,
-				   gSavedSettings.getString("VersionChannelName").c_str());
-	support_widget->appendColoredText(version, FALSE, FALSE, gColors.getColor("TextFgReadOnlyColor"));
+    // <edit>
+	//			   gSavedSettings.getString("VersionChannelName").c_str());
+				   gSavedSettings.getString("SpecifiedChannel").c_str());
+	support_widget->appendColoredText("Spoofed Identification: " + version, FALSE, FALSE, gColors.getColor("TextFgReadOnlyColor"));
+	// </edit>
 	support_widget->appendStyledText(LLTrans::getString("ReleaseNotes"), false, false, viewer_link_style);
 
 	std::string support;
@@ -282,13 +288,18 @@ void LLFloaterAbout::show(void*)
 static std::string get_viewer_release_notes_url()
 {
 	std::ostringstream version;
-	version << LL_VERSION_MAJOR << "."
-		<< LL_VERSION_MINOR << "."
-		<< LL_VERSION_PATCH << "."
-		<< LL_VERSION_BUILD;
-
+	// <edit>
+	version << gSavedSettings.getU32("SpecifiedVersionMaj") << "." //LL_VERSION_MAJOR
+		<< gSavedSettings.getU32("SpecifiedVersionMin") << "." //LL_VERSION_MINOR
+		<< gSavedSettings.getU32("SpecifiedVersionPatch") << "." //LL_VERSION_PATCH
+		<< gSavedSettings.getU32("SpecifiedVersionBuild"); //LL_VERSION_BUILD
+	// </edit>
 	LLSD query;
-	query["channel"] = gSavedSettings.getString("VersionChannelName");
+	// <edit>
+	//query["channel"] = gSavedSettings.getString("VersionChannelName");
+	query["channel"] = gSavedSettings.getString("SpecifiedChannel");
+	// I think the version below is only numbers..
+	// </edit>
 	query["version"] = version.str();
 
 	std::ostringstream url;

@@ -468,7 +468,14 @@ LLMotion *LLKeyframeMotion::create(const LLUUID &id)
 //-----------------------------------------------------------------------------
 LLPointer<LLJointState>& LLKeyframeMotion::getJointState(U32 index)
 {
-	llassert_always (index < (S32)mJointStates.size());
+	// <edit>
+	//llassert_always (index < (S32)mJointStates.size());
+	if(index >= (S32)mJointStates.size())
+	{
+		llwarns << "LLKeyframeMotion::getJointState: index >= size" << llendl;
+		index = (S32)mJointStates.size() - 1;
+	}
+	// </edit>
 	return mJointStates[index];
 }
 
@@ -477,7 +484,11 @@ LLPointer<LLJointState>& LLKeyframeMotion::getJointState(U32 index)
 //-----------------------------------------------------------------------------
 LLJoint* LLKeyframeMotion::getJoint(U32 index)
 {
-	llassert_always (index < (S32)mJointStates.size());
+	// <edit>
+	//llassert_always (index < (S32)mJointStates.size());
+	if(index >= (S32)mJointStates.size())
+		index = (S32)mJointStates.size() - 1;
+	// </edit>
 	LLJoint* joint = mJointStates[index]->getJoint();
 	llassert_always (joint);
 	return joint;
@@ -658,7 +669,15 @@ BOOL LLKeyframeMotion::onActivate()
 	// If the keyframe anim has an associated emote, trigger it. 
 	if( mJointMotionList->mEmoteName.length() > 0 )
 	{
-		mCharacter->startMotion( gAnimLibrary.stringToAnimState(mJointMotionList->mEmoteName) );
+		// <edit> crashfix
+		//mCharacter->startMotion( gAnimLibrary.stringToAnimState(mJointMotionList->mEmoteName) );
+		LLUUID emo = gAnimLibrary.stringToAnimState(mJointMotionList->mEmoteName);
+		
+		if(mCharacter->findMotion(emo) == NULL)
+		{
+			mCharacter->startMotion(emo);
+		}
+		// </edit>
 	}
 
 	mLastLoopedTime = 0.f;
@@ -1159,9 +1178,12 @@ void LLKeyframeMotion::applyConstraint(JointConstraint* constraint, F32 time, U8
 	{
 		LLVector3 delta = source_to_target * weight;
 		LLPointer<LLJointState> current_joint_state = getJointState(shared_data->mJointStateIndices[0]);
-		LLQuaternion parent_rot = current_joint_state->getJoint()->getParent()->getWorldRotation();
-		delta = delta * ~parent_rot;
-		current_joint_state->setPosition(current_joint_state->getJoint()->getPosition() + delta);
+		if (current_joint_state->getJoint())
+		{
+			LLQuaternion parent_rot = current_joint_state->getJoint()->getParent()->getWorldRotation();
+			delta = delta * ~parent_rot;
+			current_joint_state->setPosition(current_joint_state->getJoint()->getPosition() + delta);
+		}
 	}
 }
 
@@ -1361,6 +1383,18 @@ BOOL LLKeyframeMotion::deserialize(LLDataPacker& dp)
 		}
 		else
 		{
+			// <edit>
+			int sz = joint_name.size();
+			int i = 0;
+			while (i < sz)
+			{
+				if ('\a' == joint_name[i])
+				{
+					joint_name.replace(i, 1, " ");
+				}
+				i++;
+			}
+			// </edit>
 			llwarns << "joint not found: " << joint_name << llendl;
 			//return FALSE;
 		}
@@ -1638,6 +1672,15 @@ BOOL LLKeyframeMotion::deserialize(LLDataPacker& dp)
 			bin_data[BIN_DATA_LENGTH-1] = 0; // Ensure null termination
 			str = (char*)bin_data;
 			constraintp->mSourceConstraintVolume = mCharacter->getCollisionVolumeID(str);
+
+			// <edit>
+			if(constraintp->mSourceConstraintVolume == -1)
+			{
+				llwarns << "can't get source constraint volume" << llendl;
+				delete constraintp;
+				return FALSE;
+			}
+			// </edit>
 
 			if (!dp.unpackVector3(constraintp->mSourceConstraintOffset, "source_offset"))
 			{

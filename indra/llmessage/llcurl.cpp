@@ -122,7 +122,7 @@ LLCurl::Responder::~Responder()
 }
 
 // virtual
-void LLCurl::Responder::errorWithContent(
+void LLCurl::Responder::error(
 	U32 status,
 	const std::string& reason,
 	const LLSD&)
@@ -163,7 +163,7 @@ void LLCurl::Responder::completed(U32 status, const std::string& reason, const L
 	}
 	else
 	{
-		errorWithContent(status, reason, content);
+		error(status, reason, content);
 	}
 }
 
@@ -282,8 +282,6 @@ LLCurl::Easy* LLCurl::Easy::getEasy()
 		if (LLSocks::getInstance()->getHttpProxyType() == LLPROXY_SOCKS)
 		{
 			curl_easy_setopt(easy->mCurlEasyHandle, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-			if(LLSocks::getInstance()->getSelectedAuthMethod()==METHOD_PASSWORD)
-				curl_easy_setopt(easy->mCurlEasyHandle, CURLOPT_PROXYUSERPWD,LLSocks::getInstance()->getProxyUserPwd().c_str());
 		}
 		else
 		{
@@ -473,8 +471,6 @@ void LLCurl::Easy::prepRequest(const std::string& url,
 		if (LLSocks::getInstance()->getHttpProxyType() == LLPROXY_SOCKS)
 		{
 			setopt(CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
-			if(LLSocks::getInstance()->getSelectedAuthMethod()==METHOD_PASSWORD)
-				setoptString(CURLOPT_PROXYUSERPWD,LLSocks::getInstance()->getProxyUserPwd());
 		}
 		else
 		{

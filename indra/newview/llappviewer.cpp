@@ -95,6 +95,11 @@
 #include "lltexturefetch.h"
 #include "llimageworker.h"
 
+// <edit>
+#include "llao.h" //for setting up listener
+#include "lldelayeduidelete.h"
+#include "llbuildnewviewsscheduler.h"
+// </edit>
 // The files below handle dependencies from cleanup.
 #include "llkeyframemotion.h"
 #include "llworldmap.h"
@@ -241,6 +246,9 @@ F32 gLogoutMaxTime = LOGOUT_REQUEST_TIME;
 
 LLUUID gInventoryLibraryOwner;
 LLUUID gInventoryLibraryRoot;
+// <edit>
+LLUUID gLocalInventoryRoot;
+// </edit>
 
 BOOL				gDisconnected = FALSE;
 
@@ -284,6 +292,9 @@ const std::string ERROR_MARKER_FILE_NAME("SecondLife.error_marker");
 const std::string LLERROR_MARKER_FILE_NAME("SecondLife.llerror_marker");
 const std::string LOGOUT_MARKER_FILE_NAME("SecondLife.logout_marker");
 static BOOL gDoDisconnect = FALSE;
+// <edit>
+//static BOOL gBusyDisconnect = FALSE;
+// </edit>
 static std::string gLaunchFileOnQuit;
 
 // Used on Win32 for other apps to identify our window (eg, win_setup)
@@ -565,6 +576,10 @@ bool LLAppViewer::init()
 
 	initLogging();
 	
+	// <edit>
+	gDeleteScheduler = new LLDeleteScheduler();
+	gBuildNewViewsScheduler = new LLBuildNewViewsScheduler();
+	// </edit>
 	//
 	// OK to write stuff to logs now, we've now crash reported if necessary
 	//
@@ -580,12 +595,14 @@ bool LLAppViewer::init()
     writeSystemInfo();
 
 	// Build a string representing the current version number.
-    gCurrentVersion = llformat("%s %d.%d.%d.%d", 
-        gSavedSettings.getString("VersionChannelName").c_str(), 
-        LL_VERSION_MAJOR, 
-        LL_VERSION_MINOR, 
-        LL_VERSION_PATCH, 
-        LL_VERSION_BUILD );
+	// <edit> meh
+	gCurrentVersion = llformat("%s %d.%d.%d (%d)",
+            gSavedSettings.getString("SpecifiedChannel").c_str(),
+            gSavedSettings.getU32("SpecifiedVersionMaj"),
+            gSavedSettings.getU32("SpecifiedVersionMin"),
+            gSavedSettings.getU32("SpecifiedVersionPatch"),
+            gSavedSettings.getU32("SpecifiedVersionBuild") );
+	// </edit>
 
 	//////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////
@@ -671,6 +688,10 @@ bool LLAppViewer::init()
 	settings_to_globals();
 	// Setup settings listeners
 	settings_setup_listeners();
+	// <edit>
+	// Setup AO settings listener
+	LLAO::setup();
+	// </edit>
 	// Modify settings based on system configuration and compile options
 	settings_modify();
 
@@ -919,6 +940,7 @@ bool LLAppViewer::mainLoop()
 					pauseMainloopTimeout(); // *TODO: Remove. Messages shouldn't be stalling for 20+ seconds!
 					
 					LLFastTimer t3(LLFastTimer::FTM_IDLE);
+					// <edit> bad_alloc!! </edit>
 					idle();
 
 					if (gAres != NULL && gAres->isInitialized())
@@ -1203,6 +1225,9 @@ bool LLAppViewer::cleanup()
 	cleanupSavedSettings();
 	llinfos << "Settings patched up" << llendflush;
 
+	// <edit> moving this to below.
+	/*
+	// </edit>
 	// delete some of the files left around in the cache.
 	removeCacheFiles("*.wav");
 	removeCacheFiles("*.tmp");
@@ -1211,6 +1236,9 @@ bool LLAppViewer::cleanup()
 	removeCacheFiles("*.dsf");
 	removeCacheFiles("*.bodypart");
 	removeCacheFiles("*.clothing");
+	// <edit>
+	*/
+	// </edit>
 
 	llinfos << "Cache files removed" << llendflush;
 
@@ -1339,6 +1367,18 @@ bool LLAppViewer::cleanup()
 	}
 
 	removeMarkerFile(); // Any crashes from here on we'll just have to ignore
+	// <edit> moved this stuff from above to make it conditional here...
+	if(!anotherInstanceRunning())
+	{
+		removeCacheFiles("*.wav");
+		removeCacheFiles("*.tmp");
+		removeCacheFiles("*.lso");
+		removeCacheFiles("*.out");
+		removeCacheFiles("*.dsf");
+		removeCacheFiles("*.bodypart");
+		removeCacheFiles("*.clothing");
+	}
+	// </edit>
 	
 	writeDebugInfo();
 
@@ -1492,14 +1532,21 @@ bool LLAppViewer::initThreads()
 
 void errorCallback(const std::string &error_string)
 {
-#ifndef LL_RELEASE_FOR_DOWNLOAD
-	OSMessageBox(error_string, "Fatal Error", OSMB_OK);
-#endif
+	static std::string last_message;
+	if(last_message != error_string)
+	{
+		U32 response = OSMessageBox(error_string, "Crash Loop?", OSMB_YESNO);
+		if(response)
+		{
+			last_message = error_string;
+			return;
+		}
 
-	//Set the ErrorActivated global so we know to create a marker file
-	gLLErrorActivated = true;
-	
-	LLError::crashAndLoop(error_string);
+		//Set the ErrorActivated global so we know to create a marker file
+		gLLErrorActivated = true;
+
+		LLError::crashAndLoop(error_string);
+	}
 }
 
 bool LLAppViewer::initLogging()
@@ -2079,8 +2126,9 @@ bool LLAppViewer::initConfiguration()
 
 void LLAppViewer::checkForCrash(void)
 {
-    
-#if LL_SEND_CRASH_REPORTS
+	// <edit> screw sending crash reports
+#if LL_SEND_CRASH_REPORTS && 0
+	// </edit>
 	//*NOTE:Mani The current state of the crash handler has the MacOSX
 	// sending all crash reports as freezes, in order to let 
 	// the MacOSX CrashRepoter generate stacks before spawning the 
@@ -2148,8 +2196,10 @@ bool LLAppViewer::initWindow()
 
 	// always start windowed
 	BOOL ignorePixelDepth = gSavedSettings.getBOOL("IgnorePixelDepth");
-	gViewerWindow = new LLViewerWindow(gWindowTitle, 
-		VIEWER_WINDOW_CLASSNAME,
+	// <edit>
+	//gViewerWindow = new LLViewerWindow(gWindowTitle, "Second Life",
+	gViewerWindow = new LLViewerWindow("Inertia", "Second Life",
+	// </edit>
 		gSavedSettings.getS32("WindowX"), gSavedSettings.getS32("WindowY"),
 		gSavedSettings.getS32("WindowWidth"), gSavedSettings.getS32("WindowHeight"),
 		FALSE, ignorePixelDepth);
@@ -2278,14 +2328,18 @@ void LLAppViewer::writeSystemInfo()
 {
 	gDebugInfo["SLLog"] = LLError::logFileName();
 
-	gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("VersionChannelName");
-	gDebugInfo["ClientInfo"]["MajorVersion"] = LL_VERSION_MAJOR;
-	gDebugInfo["ClientInfo"]["MinorVersion"] = LL_VERSION_MINOR;
-	gDebugInfo["ClientInfo"]["PatchVersion"] = LL_VERSION_PATCH;
-	gDebugInfo["ClientInfo"]["BuildVersion"] = LL_VERSION_BUILD;
+	// <edit>
+	//gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("VersionChannelName");
+	gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("SpecifiedChannel");
+	gDebugInfo["ClientInfo"]["MajorVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionMaj");
+	gDebugInfo["ClientInfo"]["MinorVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionMin");
+	gDebugInfo["ClientInfo"]["PatchVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionPatch");
+	gDebugInfo["ClientInfo"]["BuildVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionBuild");
+	// </edit>
 
 	gDebugInfo["CAFilename"] = gDirUtilp->getCAFile();
 
+	//need to put in something to lie about this stuff
 	gDebugInfo["CPUInfo"]["CPUString"] = gSysCPU.getCPUString();
 	gDebugInfo["CPUInfo"]["CPUFamily"] = gSysCPU.getFamily();
 	gDebugInfo["CPUInfo"]["CPUMhz"] = gSysCPU.getMhz();
@@ -2316,7 +2370,7 @@ void LLAppViewer::writeSystemInfo()
 	
 	// Dump some debugging info
 	LL_INFOS("SystemInfo") << gSecondLife
-			<< " version " << LL_VERSION_MAJOR << "." << LL_VERSION_MINOR << "." << LL_VERSION_PATCH
+			<< " version " << gSavedSettings.getU32("SpecifiedVersionMaj") << "." << gSavedSettings.getU32("SpecifiedVersionMin") << "." << gSavedSettings.getU32("SpecifiedVersionPatch")
 			<< LL_ENDL;
 
 	// Dump the local time and time zone
@@ -2374,12 +2428,15 @@ void LLAppViewer::handleViewerCrash()
 	
 	//We already do this in writeSystemInfo(), but we do it again here to make /sure/ we have a version
 	//to check against no matter what
-	gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("VersionChannelName");
+	// <edit>
+	//gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("VersionChannelName");
+	gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("SpecifiedChannel");
 
-	gDebugInfo["ClientInfo"]["MajorVersion"] = LL_VERSION_MAJOR;
-	gDebugInfo["ClientInfo"]["MinorVersion"] = LL_VERSION_MINOR;
-	gDebugInfo["ClientInfo"]["PatchVersion"] = LL_VERSION_PATCH;
-	gDebugInfo["ClientInfo"]["BuildVersion"] = LL_VERSION_BUILD;
+	gDebugInfo["ClientInfo"]["MajorVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionMaj");
+	gDebugInfo["ClientInfo"]["MinorVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionMin");
+	gDebugInfo["ClientInfo"]["PatchVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionPatch");
+	gDebugInfo["ClientInfo"]["BuildVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionBuild");
+	// </edit>
 
 	LLParcel* parcel = LLViewerParcelMgr::getInstance()->getAgentParcel();
 	if ( parcel && parcel->getMusicURL()[0])
@@ -3075,6 +3132,9 @@ void LLAppViewer::badNetworkHandler()
 
 	// Flush all of our caches on exit in the case of disconnect due to
 	// invalid packets.
+	// <edit>
+	if(1) return;
+	// </edit>
 
 	mPurgeOnExit = TRUE;
 
@@ -3291,8 +3351,10 @@ void LLAppViewer::idle()
 		// *FIX: (???) SAMANTHA
 		if (viewer_stats_timer.getElapsedTimeF32() >= SEND_STATS_PERIOD && !gDisconnected)
 		{
-			llinfos << "Transmitting sessions stats" << llendl;
-			send_stats();
+			// <edit> we are not transmitting session stats
+			//llinfos << "Transmitting sessions stats" << llendl;
+			//send_stats();
+			// </edit>
 			viewer_stats_timer.reset();
 		}
 
@@ -4030,12 +4092,15 @@ void LLAppViewer::handleLoginComplete()
 	initMainloopTimeout("Mainloop Init");
 
 	// Store some data to DebugInfo in case of a freeze.
-	gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("VersionChannelName");
+	// <edit>
+	//gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("VersionChannelName");
+	gDebugInfo["ClientInfo"]["Name"] = gSavedSettings.getString("SpecifiedChannel");
+	// </edit>
 
-	gDebugInfo["ClientInfo"]["MajorVersion"] = LL_VERSION_MAJOR;
-	gDebugInfo["ClientInfo"]["MinorVersion"] = LL_VERSION_MINOR;
-	gDebugInfo["ClientInfo"]["PatchVersion"] = LL_VERSION_PATCH;
-	gDebugInfo["ClientInfo"]["BuildVersion"] = LL_VERSION_BUILD;
+	gDebugInfo["ClientInfo"]["MajorVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionMaj");
+	gDebugInfo["ClientInfo"]["MinorVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionMin");
+	gDebugInfo["ClientInfo"]["PatchVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionPatch");
+	gDebugInfo["ClientInfo"]["BuildVersion"] = (S32)gSavedSettings.getU32("SpecifiedVersionBuild");
 
 	LLParcel* parcel = LLViewerParcelMgr::getInstance()->getAgentParcel();
 	if ( parcel && parcel->getMusicURL()[0])

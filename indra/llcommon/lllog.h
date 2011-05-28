@@ -41,7 +41,7 @@ class LLLogImpl;
 class LLApp;
 class LLSD;
 
-class LL_COMMON_API LLLog
+class LLLog
 {
 public:
 	LLLog(LLApp* app);

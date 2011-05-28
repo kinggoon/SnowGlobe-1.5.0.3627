@@ -262,6 +262,8 @@ public:
 
 	virtual void getAssetData(const LLUUID uuid, LLAssetType::EType atype, LLGetAssetCallback cb, void *user_data, BOOL is_priority = FALSE);
 
+	std::vector<LLUUID> mBlackListedAsset;
+
 	/*
 	 * TransactionID version
 	 * Viewer needs the store_local
@@ -315,15 +317,15 @@ public:
 	void		markAssetToxic( const LLUUID& uuid );
 
 protected:
-	virtual LLSD getPendingDetailsImpl(const request_list_t* requests,
+	virtual LLSD getPendingDetails(const request_list_t* requests,
 	 				LLAssetType::EType asset_type,
 	 				const std::string& detail_prefix) const;
 
-	virtual LLSD getPendingRequestImpl(const request_list_t* requests,
+	virtual LLSD getPendingRequest(const request_list_t* requests,
 							LLAssetType::EType asset_type,
 							const LLUUID& asset_id) const;
 
-	virtual bool deletePendingRequestImpl(request_list_t* requests,
+	virtual bool deletePendingRequest(request_list_t* requests,
 							LLAssetType::EType asset_type,
 							const LLUUID& asset_id);
 

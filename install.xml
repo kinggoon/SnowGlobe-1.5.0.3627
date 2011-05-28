@@ -85,9 +85,9 @@
           <key>darwin</key>
           <map>
             <key>md5sum</key>
-            <string>115d8ac44a91efdb173e9b3e478c46b6</string>
+            <string>abd07d760cdc7d23da3b861f34b09c92</string>
             <key>url</key>
-            <uri>http://s3.amazonaws.com/viewer-source-downloads/install_pkgs/apr_suite-1.3.7-darwin-20090805.tar.bz2</uri>
+            <uri>http://s3.amazonaws.com/viewer-source-downloads/install_pkgs/apr_suite-1.2.8-darwin-20080812.tar.bz2</uri>
           </map>
           <key>linux</key>
           <map>
@@ -211,19 +211,19 @@
             <key>url</key>
             <uri>http://s3.amazonaws.com/viewer-source-downloads/install_pkgs/boost-1.39.0-darwin-20100226.tar.bz2</uri>
           </map>
-          <key>linux</key>
+           <key>linux</key>
           <map>
             <key>md5sum</key>
-            <string>d58ac1a8396ac983b67cc3e3541457e3</string>
+            <string>4db3d74e40d149eeec06f4d97a609bb1</string>
             <key>url</key>
-            <uri>http://s3.amazonaws.com/viewer-source-downloads/install_pkgs/boost-1.39.0-linux-20100222a.tar.bz2</uri>
-          </map>
+            <uri>http://s3.amazonaws.com/viewer-source-downloads/install_pkgs/boost-1.39.0-linux-20100624.tar.bz2</uri>
+	  </map>
           <key>windows</key>
           <map>
             <key>md5sum</key>
-            <string>ed53511382d0fd9fec59a9f6544d9672</string>
+            <string>d631c18f447ff4d413525f3c7d52db42</string>
             <key>url</key>
-            <uri>http://s3.amazonaws.com/viewer-source-downloads/install_pkgs/boost-1.39.0-windows-20091029.tar.bz2</uri>
+            <uri>http://cloud.github.com/downloads/HazimGazov/Inertia/boost-1.39-windows.tar.bz2</uri>
           </map>
         </map>
       </map>
@@ -333,9 +333,9 @@
           <key>darwin</key>
           <map>
             <key>md5sum</key>
-            <string>c457a0a041ac4946265889a503d26c3d</string>
+            <string>9c5603e328e9f543e0a599d6b25be973</string>
             <key>url</key>
-            <uri>http://s3.amazonaws.com/viewer-source-downloads/install_pkgs/expat-1.95.8-darwin-20090805.tar.bz2</uri>
+            <uri>http://s3.amazonaws.com/viewer-source-downloads/install_pkgs/expat-1.95.8-darwin-20080812.tar.bz2</uri>
           </map>
           <key>linux</key>
           <map>

@@ -57,9 +57,7 @@
 #include "llsd.h"
 #include "llsdserialize.h"
 #include "llstl.h"
-#include "lltimer.h"
 
-extern apr_thread_mutex_t* gCallStacksLogMutexp;
 
 namespace {
 #if !LL_WINDOWS

@@ -186,6 +186,10 @@ protected:
 	void uploadAssetLegacy(const std::string& filename,
 							const LLUUID& item_id,
 							const LLTransactionID& tid);
+	// <edit>
+	virtual BOOL canSaveAs() const;
+	virtual void saveAs();
+	// </edit>
 
 	static void onSearchReplace(void* userdata);
 	static void onLoad(void* userdata);
@@ -254,6 +258,10 @@ protected:
 						   LLViewerObject* object,
 						   const LLTransactionID& tid,
 						   BOOL is_running);
+	// <edit>
+	virtual BOOL canSaveAs() const;
+	virtual void saveAs();
+	// </edit>
 
 	static void onSearchReplace(void* userdata);
 	static void onLoad(void* userdata);

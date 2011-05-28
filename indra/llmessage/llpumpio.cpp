@@ -43,7 +43,6 @@
 #include "llmemtype.h"
 #include "llstl.h"
 #include "llstat.h"
-#include "llfasttimer.h"
 
 // These should not be enabled in production, but they can be
 // intensely useful during development for finding certain kinds of

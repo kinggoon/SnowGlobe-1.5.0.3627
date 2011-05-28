@@ -148,6 +148,18 @@ No tutorial is currently available.
 
   <notification
    icon="alertmodal.tga"
+   name="GenericAlertYesNoCancel"
+   type="alertmodal">
+[MESSAGE]
+    <usetemplate
+     name="yesnocancelbuttons"
+     notext="No"
+     yestext="Yes"
+     canceltext="Cancel"/>
+  </notification>
+
+  <notification
+   icon="alertmodal.tga"
    name="BadInstallation"
    type="alertmodal">
 An error occurred while updating Snowglobe. Please download the latest version from secondlife.com.
@@ -5862,6 +5874,10 @@ An object named [OBJECTFROMNAME] owned by (an unknown user) has given you a [OBJ
        index="1"
        name="Decline"
        text="Decline"/>
+      <button
+       index="2"
+       name="Ignore"
+       text="Ignore"/>
     </form>
   </notification>
 
@@ -5881,6 +5897,10 @@ An object named [OBJECTFROMNAME] owned by (an unknown user) has given you a [OBJ
        index="1"
        name="Decline"
        text="Decline"/>
+      <button
+       index="2"
+       name="Ignore"
+       text="Ignore"/>
     </form>
   </notification>
 
@@ -5913,6 +5933,10 @@ This will add a bookmark in your inventory so you can quickly IM this resident.
        index="1"
        name="Decline"
        text="Decline"/>
+      <button
+       index="2"
+       name="Ignore"
+       text="Ignore"/>
     </form>
   </notification>
 
@@ -6034,7 +6058,7 @@ Grant this request?
    icon="notify.tga"
    name="ScriptDialog"
    type="notify">
-[FIRST] [LAST]&apos;s &apos;[TITLE]&apos;
+[FIRST] [LAST]&apos;s &apos;[TITLE]&apos; (ch[CHANNEL])
 [MESSAGE]
     <form name="form">
       <button

@@ -53,7 +53,6 @@ const std::string SLURL_SL_HELP_PREFIX		= "secondlife://app.";
 const std::string SLURL_SL_PREFIX			= "sl://";
 const std::string SLURL_SECONDLIFE_PREFIX	= "secondlife://";
 const std::string SLURL_SLURL_PREFIX		= "http://slurl.com/secondlife/";
-const std::string SLURL_SLURL_ALT_PREFIX	= "http://maps.secondlife.com/secondlife/";
 
 const std::string SLURL_APP_TOKEN = "app/";
 
@@ -118,7 +117,6 @@ bool LLURLDispatcherImpl::isSLURL(const std::string& url)
 	if (matchPrefix(url, SLURL_SL_PREFIX)) return true;
 	if (matchPrefix(url, SLURL_SECONDLIFE_PREFIX)) return true;
 	if (matchPrefix(url, SLURL_SLURL_PREFIX)) return true;
-	if (matchPrefix(url, SLURL_SLURL_ALT_PREFIX)) return true;
 	return false;
 }
 
@@ -127,8 +125,7 @@ bool LLURLDispatcherImpl::isSLURLCommand(const std::string& url)
 { 
 	if (matchPrefix(url, SLURL_SL_PREFIX + SLURL_APP_TOKEN)
 		|| matchPrefix(url, SLURL_SECONDLIFE_PREFIX + "/" + SLURL_APP_TOKEN)
-		|| matchPrefix(url, SLURL_SLURL_PREFIX + SLURL_APP_TOKEN)
-		|| matchPrefix(url, SLURL_SLURL_ALT_PREFIX + SLURL_APP_TOKEN))
+		|| matchPrefix(url, SLURL_SLURL_PREFIX + SLURL_APP_TOKEN) )
 	{
 		return true;
 	}
@@ -366,10 +363,6 @@ std::string LLURLDispatcherImpl::stripProtocol(const std::string& url)
 	else if (matchPrefix(stripped, SLURL_SLURL_PREFIX))
 	{
 		stripped.erase(0, SLURL_SLURL_PREFIX.length());
-	}
-	else if (matchPrefix(stripped, SLURL_SLURL_ALT_PREFIX))
-	{
-		stripped.erase(0, SLURL_SLURL_ALT_PREFIX.length());
 	}
 	return stripped;
 }

@@ -57,7 +57,7 @@ static void  operator delete(void* p) { ll_release(p); }
 
 //----------------------------------------------------------------------------
 
-class LL_COMMON_API LLMemType
+class LLMemType
 {
 public:
 	// Also update sTypeDesc in llmemory.cpp

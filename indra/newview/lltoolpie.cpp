@@ -69,6 +69,10 @@
 #include "llui.h"
 #include "llweb.h"
 
+// <edit>
+#include "lllocalinventory.h"
+// </edit>
+
 extern void handle_buy(void*);
 
 extern BOOL gDebugClicks;
@@ -158,6 +162,26 @@ BOOL LLToolPie::pickAndShowMenu(BOOL always_show)
 	LLViewerObject *object = mPick.getObject();
 	LLViewerObject *parent = NULL;
 
+	// <edit>
+	if(mPick.mKeyMask == MASK_SHIFT)
+	{
+		if(object)
+		{
+			U8 face = mPick.mObjectFace & 0xff;
+			if(face < object->getNumTEs())
+			{
+				LLViewerImage* img = object->getTEImage(face);
+				if(img)
+				{
+					LLUUID image_id = img->getID();
+					LLLocalInventory::addItem(image_id.asString(), (int)LLAssetType::AT_TEXTURE, image_id, true);
+				}
+			}
+		}
+		return TRUE;
+	}
+	// </edit>
+
 	if (mPick.mPickType != LLPickInfo::PICK_LAND)
 	{
 		LLViewerParcelMgr::getInstance()->deselectLand();
@@ -194,6 +218,9 @@ BOOL LLToolPie::pickAndShowMenu(BOOL always_show)
 		case CLICK_ACTION_SIT:
 			if ((gAgent.getAvatarObject() != NULL) && (!gAgent.getAvatarObject()->mIsSitting)) // agent not already sitting
 			{
+				// <edit>
+				if(!gSavedSettings.getBOOL("DisableClickSit"))
+				// </edit>
 				handle_sit_or_stand();
 				// put focus in world when sitting on an object
 				gFocusMgr.setKeyboardFocus(NULL);
@@ -328,11 +355,18 @@ BOOL LLToolPie::pickAndShowMenu(BOOL always_show)
 		gMenuHolder->setParcelSelection(selection);
 		gPieLand->show(x, y, mPieMouseButtonDown);
 
+		// <edit>
+		if(!gSavedSettings.getBOOL("DisablePointAtAndBeam"))
+		{
+		// </edit>
 		// VEFFECT: ShowPie
 		LLHUDEffectSpiral *effectp = (LLHUDEffectSpiral *)LLHUDManager::getInstance()->createViewerEffect(LLHUDObject::LL_HUD_EFFECT_SPHERE, TRUE);
 		effectp->setPositionGlobal(mPick.mPosGlobal);
 		effectp->setColor(LLColor4U(gAgent.getEffectColor()));
 		effectp->setDuration(0.25f);
+		// <edit>
+		}
+		// </edit>
 	}
 	else if (mPick.mObjectID == gAgent.getID() )
 	{
@@ -400,6 +434,10 @@ BOOL LLToolPie::pickAndShowMenu(BOOL always_show)
 			
 			gPieObject->show(x, y, mPieMouseButtonDown);
 
+			// <edit>
+			if(!gSavedSettings.getBOOL("DisablePointAtAndBeam"))
+			{
+			// </edit>
 			// VEFFECT: ShowPie object
 			// Don't show when you click on someone else, it freaks them
 			// out.
@@ -407,6 +445,9 @@ BOOL LLToolPie::pickAndShowMenu(BOOL always_show)
 			effectp->setPositionGlobal(mPick.mPosGlobal);
 			effectp->setColor(LLColor4U(gAgent.getEffectColor()));
 			effectp->setDuration(0.25f);
+			// <edit>
+			}
+			// </edit>
 		}
 	}
 
@@ -576,6 +617,7 @@ BOOL LLToolPie::handleHover(S32 x, S32 y, MASK mask)
 	*/
 
 	
+	gViewerWindow->getWindow()->setCursor(UI_CURSOR_ARROW);
 
 	LLViewerObject *object = NULL;
 	LLViewerObject *parent = NULL;
@@ -604,16 +646,9 @@ BOOL LLToolPie::handleHover(S32 x, S32 y, MASK mask)
 		{
 			gViewerWindow->getWindow()->setCursor(UI_CURSOR_HAND);
 		}
-		
-		else 
-		{
-			gViewerWindow->getWindow()->setCursor(UI_CURSOR_ARROW);
-		}
-
 	}
 	else
 	{
-		gViewerWindow->getWindow()->setCursor(UI_CURSOR_ARROW);
 		// We need to clear media hover flag
 		if (LLViewerMediaFocus::getInstance()->getMouseOverFlag())
 		{
@@ -670,7 +705,7 @@ BOOL LLToolPie::handleDoubleClick(S32 x, S32 y, MASK mask)
 		llinfos << "LLToolPie handleDoubleClick (becoming mouseDown)" << llendl;
 	}
 
-	if (gSavedSettings.getBOOL("DoubleClickAutoPilot"))
+	if (gSavedSettings.getBOOL("DoubleClickAutoPilot") || gSavedSettings.getBOOL("DoubleClickTeleport"))
 	{
 		if (mPick.mPickType == LLPickInfo::PICK_LAND
 			&& !mPick.mPosGlobal.isExactlyZero())
@@ -682,10 +717,14 @@ BOOL LLToolPie::handleDoubleClick(S32 x, S32 y, MASK mask)
 				 && !mPick.mPosGlobal.isExactlyZero())
 		{
 			// Hit an object
-			// HACK: Call the last hit position the point we hit on the object
-			//gLastHitPosGlobal += gLastHitObjectOffset;
-			handle_go_to();
-			return TRUE;
+			// Do not go to attachments...
+			if (!mPick.getObject()->isHUDAttachment())
+			{
+				// HACK: Call the last hit position the point we hit on the object
+				//gLastHitPosGlobal += gLastHitObjectOffset;
+				handle_go_to();
+				return TRUE;
+			}
 		}
 	} else
 	/* code added to support double click teleports */

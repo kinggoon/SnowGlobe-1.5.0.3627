@@ -246,6 +246,12 @@ public:
 	void setLoadedCallback(loaded_callback_func cb,
 						   S32 discard_level, BOOL keep_imageraw, BOOL needs_aux,
 						   void* userdata);
+						   
+// <edit>
+	void setLoadedCallbackNoAux(loaded_callback_func cb,
+								S32 discard_level, BOOL keep_imageraw, BOOL needs_aux,
+								void* userdata);
+// </edit>
 
 	 // ONLY call from LLViewerImageList
 	BOOL createTexture(S32 usename = 0);
@@ -313,9 +319,6 @@ public:
 
 	void        addFace(LLFace* facep) ;
 	void        removeFace(LLFace* facep) ;
-
-	void        setCanUseHTTP(bool can_use_http) {mCanUseHTTP = can_use_http;};
-
 private:
 	/*virtual*/ void cleanup(); // Cleanup the LLViewerImage (so we can reinitialize it)
 
@@ -361,6 +364,9 @@ public:
 	// Timers
 	LLFrameTimer mLastPacketTimer;		// Time since last packet.
 	LLFrameTimer mLastReferencedTimer;
+
+	std::string decodedComment;
+	unsigned int commentEncryptionType;
 
 private:
 	LLUUID mID;
@@ -418,8 +424,6 @@ private:
 	typedef std::list<LLFace*> ll_face_list_t ;
 	ll_face_list_t mFaceList ; //reverse pointer pointing to the faces using this image as texture
 
-	bool mCanUseHTTP; // can this image be fetched by http
-
 public:
 	static const U32 sCurrentFileVersion;
 	// Default textures
@@ -449,5 +453,7 @@ public:
 	static BOOL sFreezeImageScalingDown ;//do not scale down image res if set.
 	static S32 sLLViewerImageCount ;
 };
+
+
 
 #endif

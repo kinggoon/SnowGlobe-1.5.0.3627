@@ -46,7 +46,7 @@
  *
  * The date class represents a point in time after epoch - 1970-01-01.
  */
-class LL_COMMON_API LLDate
+class LLDate
 {
 public:
 	/** 
@@ -153,9 +153,14 @@ private:
 };
 
 // Helper function to stream out a date
-LL_COMMON_API std::ostream& operator<<(std::ostream& s, const LLDate& date);
+std::ostream& operator<<(std::ostream& s, const LLDate& date);
 
 // Helper function to stream in a date
-LL_COMMON_API std::istream& operator>>(std::istream& s, LLDate& date);
+std::istream& operator>>(std::istream& s, LLDate& date);
+
+
+const static std::string weekdays[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+const static std::string months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 #endif // LL_LLDATE_H

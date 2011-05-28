@@ -68,7 +68,8 @@ template <class T>
 class LLOctreeTraveler : public LLTreeTraveler<T>
 {
 public:
-	virtual void traverse(const LLOctreeNode<T>* node);
+	virtual void traverse(const LLTreeNode<T>* node);
+	virtual void visit(const LLTreeNode<T>* state) { }
 	virtual void visit(const LLOctreeNode<T>* branch) = 0;
 };
 
@@ -318,8 +319,16 @@ public:
 					child = getChild(i);
 					if (child->isInside(data->getPositionGroup()))
 					{
-						child->insert(data);
-						return false;
+						// <edit>
+						// tempfix, test, shitsux
+						//child->insert(data);
+						if(child->getElementCount() < LL_OCTREE_MAX_CAPACITY)
+						{
+							child->insert(data);
+							return false;
+						}
+						//return false;
+						// </edit>
 					}
 				}
 				
@@ -704,8 +713,9 @@ public:
 //		LLOctreeTraveler
 //========================
 template <class T>
-void LLOctreeTraveler<T>::traverse(const LLOctreeNode<T>* node)
+void LLOctreeTraveler<T>::traverse(const LLTreeNode<T>* tree_node)
 {
+	const LLOctreeNode<T>* node = (const LLOctreeNode<T>*) tree_node;
 	node->accept(this);
 	for (U32 i = 0; i < node->getChildCount(); i++)
 	{

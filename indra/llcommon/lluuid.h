@@ -35,7 +35,6 @@
 #include <iostream>
 #include <set>
 #include "stdtypes.h"
-#include "llpreprocessor.h"
 
 const S32 UUID_BYTES = 16;
 const S32 UUID_WORDS = 4;
@@ -48,7 +47,7 @@ struct uuid_time_t {
 	U32 low;
 		};
 
-class LL_COMMON_API LLUUID
+class LLUUID
 {
 public:
 	//
@@ -107,8 +106,8 @@ public:
 	LLUUID combine(const LLUUID& other) const;
 	void combine(const LLUUID& other, LLUUID& result) const;  
 
-	friend LL_COMMON_API std::ostream&	 operator<<(std::ostream& s, const LLUUID &uuid);
-	friend LL_COMMON_API std::istream&	 operator>>(std::istream& s, LLUUID &uuid);
+	friend std::ostream&	 operator<<(std::ostream& s, const LLUUID &uuid);
+	friend std::istream&	 operator>>(std::istream& s, LLUUID &uuid);
 
 	void toString(char *out) const;		// Does not allocate memory, needs 36 characters (including \0)
 	void toString(std::string& out) const;
@@ -324,7 +323,7 @@ typedef std::set<LLUUID, lluuid_less> uuid_list_t;
  */
 typedef LLUUID LLAssetID;
 
-class LL_COMMON_API LLTransactionID : public LLUUID
+class LLTransactionID : public LLUUID
 {
 public:
 	LLTransactionID() : LLUUID() { }

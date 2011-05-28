@@ -2,6 +2,10 @@
 
 project(media_plugin_webkit)
 
+if(WORD_SIZE EQUAL 64)
+    set(REQUIRE_PIC)
+endif(WORD_SIZE EQUAL 64)
+
 include(00-Common)
 include(LLCommon)
 include(LLImage)
@@ -9,7 +13,6 @@ include(LLPlugin)
 include(LLMath)
 include(LLRender)
 include(LLWindow)
-include(UI)
 include(Linking)
 include(PluginAPI)
 include(MediaPluginBase)
@@ -25,7 +28,6 @@ include_directories(
     ${LLIMAGE_INCLUDE_DIRS}
     ${LLRENDER_INCLUDE_DIRS}
     ${LLWINDOW_INCLUDE_DIRS}
-    ${LLQTWEBKIT_INCLUDE_DIR}
 )
 
 
@@ -43,27 +45,18 @@ if(WORD_SIZE EQUAL 64)
 	endif(WINDOWS)
 endif (WORD_SIZE EQUAL 64)
 
-set(media_plugin_webkit_LINK_LIBRARIES
+add_library(media_plugin_webkit
+    SHARED
+    ${media_plugin_webkit_SOURCE_FILES}
+)
+
+target_link_libraries(media_plugin_webkit
   ${LLPLUGIN_LIBRARIES}
   ${MEDIA_PLUGIN_BASE_LIBRARIES}
   ${LLCOMMON_LIBRARIES}
   ${WEBKIT_PLUGIN_LIBRARIES}
   ${PLUGIN_API_WINDOWS_LIBRARIES}
 )
-
-if(LINUX)
-  list(APPEND media_plugin_webkit_LINK_LIBRARIES
-    ${UI_LIBRARIES}  # for glib/GTK
-    )
-endif(LINUX)
-
-
-add_library(media_plugin_webkit
-    SHARED
-    ${media_plugin_webkit_SOURCE_FILES}
-)
-
-target_link_libraries(media_plugin_webkit ${media_plugin_webkit_LINK_LIBRARIES})
 
 add_dependencies(media_plugin_webkit
   ${LLPLUGIN_LIBRARIES}

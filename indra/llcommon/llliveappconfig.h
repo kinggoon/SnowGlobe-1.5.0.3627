@@ -37,7 +37,7 @@
 
 class LLApp;
 
-class LL_COMMON_API LLLiveAppConfig : public LLLiveFile
+class LLLiveAppConfig : public LLLiveFile
 {
 public:
 	// To use this, instantiate a LLLiveAppConfig object inside your main loop.

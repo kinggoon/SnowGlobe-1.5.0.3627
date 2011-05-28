@@ -50,7 +50,6 @@
 #include <xmlrpc-epi/xmlrpc.h>
 
 
-
 // Don't define PLATFORM_STRING for unknown platforms - they need
 // to get added to the login cgi script, so we want this to cause an
 // error if we get compiled for a different platform.
@@ -131,11 +130,35 @@ void LLUserAuth::authenticate(
 	XMLRPC_VectorAppendString(params, "last", lastname.c_str(), 0);
 	XMLRPC_VectorAppendString(params, "web_login_key", web_login_key.getString().c_str(), 0);
 	XMLRPC_VectorAppendString(params, "start", start.c_str(), 0);
-	XMLRPC_VectorAppendString(params, "version", gCurrentVersion.c_str(), 0); // Includes channel name
-	XMLRPC_VectorAppendString(params, "channel", gSavedSettings.getString("VersionChannelName").c_str(), 0);
+	// <edit>
+	//XMLRPC_VectorAppendString(params, "version", gCurrentVersion.c_str(), 0); // Includes channel name
+	//XMLRPC_VectorAppendString(params, "channel", gSavedSettings.getString("VersionChannelName").c_str(), 0);
+	
+	//WOW NEIL YOU ARE SO AWESOME!!
+	
+	XMLRPC_VectorAppendString(params, "version", std::string(
+		gSavedSettings.getString("SpecifiedChannel") + " " +
+		llformat("%d", gSavedSettings.getU32("SpecifiedVersionMaj")) + "." +
+		llformat("%d", gSavedSettings.getU32("SpecifiedVersionMin")) + "." +
+		llformat("%d", gSavedSettings.getU32("SpecifiedVersionPatch")) + "." +
+		llformat("%d", gSavedSettings.getU32("SpecifiedVersionBuild"))
+	).c_str(), 0); // Includes channel name
+	
+	XMLRPC_VectorAppendString(params, "channel", gSavedSettings.getString("SpecifiedChannel").c_str(), 0);
+	// </edit>
 	XMLRPC_VectorAppendString(params, "platform", PLATFORM_STRING, 0);
+	// <edit>
+	if(gSavedSettings.getBOOL("SpecifyMAC"))
+		XMLRPC_VectorAppendString(params, "mac", gSavedSettings.getString("SpecifiedMAC").c_str(), 0);
+	else
+	// </edit>
 	XMLRPC_VectorAppendString(params, "mac", hashed_mac.c_str(), 0);
 	// A bit of security through obscurity: id0 is volume_serial
+	// <edit>
+	if(gSavedSettings.getBOOL("SpecifyID0"))
+		XMLRPC_VectorAppendString(params, "id0", gSavedSettings.getString("SpecifiedID0").c_str(), 0);
+	else
+	// </edit>
 	XMLRPC_VectorAppendString(params, "id0", hashed_volume_serial.c_str(), 0);
 	if (skip_optional)
 	{
@@ -217,11 +240,35 @@ void LLUserAuth::authenticate(
 	XMLRPC_VectorAppendString(params, "last", lastname.c_str(), 0);
 	XMLRPC_VectorAppendString(params, "passwd", dpasswd.c_str(), 0);
 	XMLRPC_VectorAppendString(params, "start", start.c_str(), 0);
-	XMLRPC_VectorAppendString(params, "version", gCurrentVersion.c_str(), 0); // Includes channel name
-	XMLRPC_VectorAppendString(params, "channel", gSavedSettings.getString("VersionChannelName").c_str(), 0);
+	// <edit>
+	//XMLRPC_VectorAppendString(params, "version", gCurrentVersion.c_str(), 0); // Includes channel name
+	//XMLRPC_VectorAppendString(params, "channel", gSavedSettings.getString("VersionChannelName").c_str(), 0);
+	
+	//WOW NEIL YOU ARE SO AWESOME!!
+	
+	XMLRPC_VectorAppendString(params, "version", std::string(
+		gSavedSettings.getString("SpecifiedChannel") + " " +
+		llformat("%d", gSavedSettings.getU32("SpecifiedVersionMaj")) + "." +
+		llformat("%d", gSavedSettings.getU32("SpecifiedVersionMin")) + "." +
+		llformat("%d", gSavedSettings.getU32("SpecifiedVersionPatch")) + "." +
+		llformat("%d", gSavedSettings.getU32("SpecifiedVersionBuild"))
+	).c_str(), 0); // Includes channel name
+	
+	XMLRPC_VectorAppendString(params, "channel", gSavedSettings.getString("SpecifiedChannel").c_str(), 0);
+	// </edit>
 	XMLRPC_VectorAppendString(params, "platform", PLATFORM_STRING, 0);
+	// <edit>
+	if(gSavedSettings.getBOOL("SpecifyMAC"))
+		XMLRPC_VectorAppendString(params, "mac", gSavedSettings.getString("SpecifiedMAC").c_str(), 0);
+	else
+	// </edit>
 	XMLRPC_VectorAppendString(params, "mac", hashed_mac.c_str(), 0);
 	// A bit of security through obscurity: id0 is volume_serial
+	// <edit>
+	if(gSavedSettings.getBOOL("SpecifyID0"))
+		XMLRPC_VectorAppendString(params, "id0", gSavedSettings.getString("SpecifiedID0").c_str(), 0);
+	else
+	// </edit>
 	XMLRPC_VectorAppendString(params, "id0", hashed_volume_serial.c_str(), 0);
 	if (skip_optional)
 	{
@@ -436,7 +483,7 @@ BOOL LLUserAuth::getOptions(const std::string& key, options_t& options) const
 	all_options_t::const_iterator it = mOptions.find(key);
 	if(it != mOptions.end())
 	{
-		// found the option set, copyt them onto the container.
+		// found the option set, copy them onto the container.
 		std::back_insert_iterator<options_t> ii(options);
 		std::copy((*it).second.begin(), (*it).second.end(), ii);
 		return TRUE;

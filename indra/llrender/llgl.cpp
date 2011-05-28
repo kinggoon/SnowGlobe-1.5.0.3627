@@ -255,7 +255,7 @@ PFNGLGETACTIVEATTRIBARBPROC glGetActiveAttribARB = NULL;
 PFNGLGETATTRIBLOCATIONARBPROC glGetAttribLocationARB = NULL;
 
 #if LL_WINDOWS
-PFNWGLSWAPINTERVALEXTPROC			wglSwapIntervalEXT = NULL;
+PFNWGLSWAPINTERVALEXTPROC      wglSwapIntervalEXT = NULL;
 #endif
 
 #if LL_LINUX_NV_GL_HEADERS
@@ -546,6 +546,8 @@ void LLGLManager::shutdownGL()
 
 // these are used to turn software blending on. They appear in the Debug/Avatar menu
 // presence of vertex skinning/blending or vertex programs will set these to FALSE by default.
+
+extern LLCPUInfo gSysCPU;
 
 void LLGLManager::initExtensions()
 {

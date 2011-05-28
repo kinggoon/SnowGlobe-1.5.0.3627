@@ -461,6 +461,7 @@ void LLPanelActiveSpeakers::refreshSpeakers()
 			}
 
 			LLColor4 icon_color;
+			
 			if (speakerp->mStatus == LLSpeaker::STATUS_MUTED)
 			{
 				icon_cell->setValue(mute_icon_image);
@@ -508,6 +509,28 @@ void LLPanelActiveSpeakers::refreshSpeakers()
 			{
 				name_cell->setColor(LLColor4::black);
 			}
+			// <edit>
+			if(!mShowTextChatters && !(speakerp->mStatus == LLSpeaker::STATUS_NOT_IN_CHANNEL) && speakerp->mID != gAgent.getID())
+			{
+				bool found = false;
+				for (LLWorld::region_list_t::const_iterator iter = LLWorld::getInstance()->getRegionList().begin();
+						iter != LLWorld::getInstance()->getRegionList().end(); ++iter)
+				{
+					LLViewerRegion* regionp = *iter;
+					// let us check to see if they are actually in the sim
+					if(regionp)
+					{
+						if(regionp->mMapAvatarIDs.find(speakerp->mID) != -1)
+						{
+							found = true;
+							break;
+						}
+					}
+				}
+				if(!found)
+					name_cell->setColor(LLColor4::red);
+			}
+			// </edit>
 
 			std::string speaker_name;
 			if (speakerp->mDisplayName.empty())

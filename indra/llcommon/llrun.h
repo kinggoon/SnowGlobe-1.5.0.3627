@@ -38,8 +38,6 @@
 #include <vector>
 #include <boost/shared_ptr.hpp>
 
-#include "llpreprocessor.h"
-
 class LLRunnable;
 
 /** 
@@ -50,7 +48,7 @@ class LLRunnable;
  * which are scheduled to run on a repeating or one time basis.
  * @see LLRunnable
  */
-class LL_COMMON_API LLRunner
+class LLRunner
 {
 public:
 	/**
@@ -151,7 +149,7 @@ protected:
  * something useful.
  * @see LLRunner
  */
-class LL_COMMON_API LLRunnable
+class LLRunnable
 {
 public:
 	LLRunnable();

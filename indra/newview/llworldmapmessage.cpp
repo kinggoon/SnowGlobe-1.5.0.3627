@@ -37,6 +37,9 @@
 #include "llworldmap.h"
 #include "llagent.h"
 #include "llfloaterworldmap.h"
+// <edit>
+#include "llviewernetwork.h" //for isInProductionGrid()
+// </edit>
 
 const U32 LAYER_FLAG = 2;
 
@@ -159,7 +162,9 @@ void LLWorldMapMessage::processMapBlockReply(LLMessageSystem* msg, void**)
 	msg->getU32Fast(_PREHASH_AgentData, _PREHASH_Flags, agent_flags);
 
 	// There's only one flag that we ever use here
-	if (agent_flags != LAYER_FLAG)
+	if (agent_flags != LAYER_FLAG
+		//<edit>
+		&& LLViewerLogin::getInstance()->getGridChoice() < GRID_INFO_OTHER)
 	{
 		llwarns << "Invalid map image type returned! layer = " << agent_flags << llendl;
 		return;
@@ -228,6 +233,15 @@ void LLWorldMapMessage::processMapBlockReply(LLMessageSystem* msg, void**)
 				callback(handle, LLWorldMapMessage::getInstance()->mSLURL, image_id, LLWorldMapMessage::getInstance()->mSLURLTeleport);
 			}
 		}
+		// <edit>
+		if(LLAgent::lure_show)
+		{
+			if((x_regions == LLAgent::lure_global_x) && (y_regions == LLAgent::lure_global_y))
+			{
+				gAgent.onFoundLureDestination();
+			}
+		}
+		// </edit>
 	}
 	// Tell the UI to update itself
 	gFloaterWorldMap->updateSims(found_null_sim);

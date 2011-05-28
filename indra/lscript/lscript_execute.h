@@ -36,7 +36,6 @@
 #include "lscript_byteconvert.h"
 #include "linked_lists.h"
 #include "lscript_library.h"
-#include "lltimer.h"
 
 // Return values for run() methods
 const U32 NO_DELETE_FLAG	= 0x0000;

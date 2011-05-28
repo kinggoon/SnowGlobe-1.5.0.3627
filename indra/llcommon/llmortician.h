@@ -35,7 +35,7 @@
 
 #include "stdtypes.h"
 
-class LL_COMMON_API LLMortician
+class LLMortician 
 {
 public:
 	LLMortician() { mIsDead = FALSE; }

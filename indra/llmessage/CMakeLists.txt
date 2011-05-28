@@ -48,12 +48,14 @@ set(llmessage_SOURCE_FILES
     llmail.cpp
     llmessagebuilder.cpp
     llmessageconfig.cpp
+    llmessagelog.cpp
     llmessagereader.cpp
     llmessagetemplate.cpp
     llmessagetemplateparser.cpp
     llmessagethrottle.cpp
     llmime.cpp
     llnamevalue.cpp
+    llnetcanary.cpp
     llnullcipher.cpp
     llpacketack.cpp
     llpacketbuffer.cpp
@@ -97,7 +99,6 @@ set(llmessage_SOURCE_FILES
     patch_dct.cpp
     patch_idct.cpp
     llsocks5.cpp
-    sound_ids.cpp
     )
 
 set(llmessage_HEADER_FILES
@@ -139,6 +140,7 @@ set(llmessage_HEADER_FILES
     llmail.h
     llmessagebuilder.h
     llmessageconfig.h
+    llmessagelog.h
     llmessagereader.h
     llmessagetemplate.h
     llmessagetemplateparser.h
@@ -146,6 +148,7 @@ set(llmessage_HEADER_FILES
     llmime.h
     llmsgvariabletype.h
     llnamevalue.h
+    llnetcanary.h
     llnullcipher.h
     llpacketack.h
     llpacketbuffer.h
@@ -214,9 +217,12 @@ target_link_libraries(
     ${XMLRPCEPI_LIBRARIES}
     )
 
-IF (LL_TESTS)
-  ADD_BUILD_TEST(llhttpclientadapter llmessage)
-  ADD_BUILD_TEST(lltrustedmessageservice llmessage)
-  ADD_BUILD_TEST(lltemplatemessagedispatcher llmessage)
-ENDIF (LL_TESTS)
+IF (NOT LINUX AND VIEWER)
+    # When building the viewer the tests links against the shared objects. 
+    # These can not be found when we try to run the tests, so we had to disable them, for the viewer build.
+    # TODO: Can someone with viewer knowledge figure out how to make these find the correct so.
+    #ADD_BUILD_TEST(llhttpclientadapter llmessage)
+    ADD_BUILD_TEST(lltrustedmessageservice llmessage)
+    ADD_BUILD_TEST(lltemplatemessagedispatcher llmessage)
+ENDIF (NOT LINUX AND VIEWER)
 

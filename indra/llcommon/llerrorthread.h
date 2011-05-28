@@ -35,7 +35,7 @@
 
 #include "llthread.h"
 
-class LL_COMMON_API LLErrorThread : public LLThread
+class LLErrorThread : public LLThread
 {
 public:
 	LLErrorThread();

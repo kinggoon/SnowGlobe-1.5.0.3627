@@ -86,6 +86,7 @@
 #include "llfloatermute.h"
 #include "llfloaterpostcard.h"
 #include "llfloaterpreference.h"
+#include "llfloaterteleporthistory.h"
 #include "llfollowcam.h"
 #include "llgroupnotify.h"
 #include "llhudeffect.h"
@@ -138,6 +139,9 @@
 #include "llviewerdisplay.h"
 #include "llkeythrottle.h"
 #include "lltranslate.h"
+// <edit>
+#include "llviewernetwork.h"
+// </edit>
 
 #include <boost/tokenizer.hpp>
 
@@ -260,7 +264,10 @@ static LLNotificationFunctorRegistration friendship_offer_callback_reg_nm("Offer
 void give_money(const LLUUID& uuid, LLViewerRegion* region, S32 amount, BOOL is_group,
 				S32 trx_type, const std::string& desc)
 {
-	if(0 == amount || !region) return;
+	// <edit>
+	//if(0 == amount || !region) return;
+	if(!region) return;
+	// </edit>
 	amount = abs(amount);
 	LL_INFOS("Messaging") << "give_money(" << uuid << "," << amount << ")"<< LL_ENDL;
 	if(can_afford_transaction(amount))
@@ -886,9 +893,9 @@ void open_offer(const std::vector<LLUUID>& items, const std::string& from_name)
 		//if we are throttled, don't display them
 		if (check_offer_throttle(from_name, false))
 		{
-			// I'm not sure this is a good idea.
-			bool show_keep_discard = item->getPermissions().getCreator() != gAgent.getID();
-			//bool show_keep_discard = true;
+			// I'm not sure this is a good idea - Definitely a bad idea. HB
+			//bool show_keep_discard = item->getPermissions().getCreator() != gAgent.getID();
+			bool show_keep_discard = true;
 			switch(asset_type)
 			{
 			case LLAssetType::AT_NOTECARD:
@@ -1197,7 +1204,10 @@ bool LLOfferInfo::inventory_offer_callback(const LLSD& notification, const LLSD&
 
 		log_message = "You decline " + mDesc + " from " + mFromName + ".";
 		chat.mText = log_message;
-		if( LLMuteList::getInstance()->isMuted(mFromID ) && ! LLMuteList::getInstance()->isLinden(mFromName) )  // muting for SL-42269
+		// <edit>
+		//if( LLMuteList::getInstance()->isMuted(mFromID ) && ! LLMuteList::getInstance()->isLinden(mFromName) )  // muting for SL-42269
+		if( LLMuteList::getInstance()->isMuted(mFromID) )  // muting for SL-42269
+		// </edit>
 		{
 			chat.mMuted = TRUE;
 		}
@@ -1277,11 +1287,6 @@ void inventory_offer_handler(LLOfferInfo* info, BOOL from_task)
 	// Strip any SLURL from the message display. (DEV-2754)
 	std::string msg = info->mDesc;
 	int indx = msg.find(" ( http://slurl.com/secondlife/");
-	if(indx == std::string::npos)
-	{
-		// try to find new slurl host
-		indx = msg.find(" ( http://maps.secondlife.com/secondlife/");
-	}
 	if(indx >= 0)
 	{
 		LLStringUtil::truncate(msg, indx);
@@ -1463,12 +1468,19 @@ void process_improved_im(LLMessageSystem *msg, void **user_data)
 	binary_bucket_size = msg->getSizeFast(_PREHASH_MessageBlock, _PREHASH_BinaryBucket);
 	EInstantMessage dialog = (EInstantMessage)d;
 
+	// <edit>
+	llinfos << "RegionID: " << region_id.asString() << llendl;
+	// </edit>
+
 	BOOL is_busy = gAgent.getBusy();
 	BOOL is_muted = LLMuteList::getInstance()->isMuted(from_id, name, LLMute::flagTextChat);
 	BOOL is_linden = LLMuteList::getInstance()->isLinden(name);
 	BOOL is_owned_by_me = FALSE;
 	
-	chat.mMuted = is_muted && !is_linden;
+	// <edit>
+	//chat.mMuted = is_muted && !is_linden;
+	chat.mMuted = is_muted;
+	// </edit>
 	chat.mFromID = from_id;
 	chat.mFromName = name;
 	chat.mSourceType = (from_id.isNull() || (name == std::string(SYSTEM_FROM))) ? CHAT_SOURCE_SYSTEM : CHAT_SOURCE_AGENT;
@@ -2012,6 +2024,64 @@ void process_improved_im(LLMessageSystem *msg, void **user_data)
 				payload["lure_id"] = session_id;
 				payload["godlike"] = FALSE;
 				LLNotifications::instance().add("TeleportOffered", args, payload);
+				// <edit>
+				if(binary_bucket_size)
+				{
+					char* dest = new char[binary_bucket_size];
+					strncpy(dest, (char*)binary_bucket, binary_bucket_size-1);		/* Flawfinder: ignore */
+					dest[binary_bucket_size-1] = '\0';
+
+					llinfos << "IM_LURE_USER binary_bucket " << dest << llendl;
+
+					std::string str(dest);
+					typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+					boost::char_separator<char> sep("|","",boost::keep_empty_tokens);
+					tokenizer tokens(str, sep);
+					tokenizer::iterator iter = tokens.begin();
+					std::string global_x_str(*iter++);
+					std::string global_y_str(*iter++);
+					std::string x_str(*iter++);
+					std::string y_str(*iter++);
+					std::string z_str(*iter++);
+					// skip what I think must be LookAt
+					if(iter != tokens.end())
+						iter++; // x
+					if(iter != tokens.end())
+						iter++; // y
+					if(iter != tokens.end())
+						iter++; // z
+					std::string mat_str("");
+					if(iter != tokens.end())
+						mat_str.assign(*iter++);
+					mat_str = utf8str_trim(mat_str);
+
+					llinfos << "IM_LURE_USER tokenized " << global_x_str << "|" << global_y_str << "|" << x_str << "|" << y_str << "|" << z_str << "|" << mat_str << llendl;
+
+					std::istringstream gxstr(global_x_str);
+					int global_x;
+					gxstr >> global_x;
+
+					std::istringstream gystr(global_y_str);
+					int global_y;
+					gystr >> global_y;
+
+					std::istringstream xstr(x_str);
+					int x;
+					xstr >> x;
+
+					std::istringstream ystr(y_str);
+					int y;
+					ystr >> y;
+
+					std::istringstream zstr(z_str);
+					int z;
+					zstr >> z;
+
+					llinfos << "IM_LURE_USER parsed " << global_x << "|" << global_y << "|" << x << "|" << y << "|" << z << "|" << mat_str << llendl;
+
+					gAgent.showLureDestination(name, global_x, global_y, x, y, z, mat_str);
+				}
+				// </edit>
 			}
 		}
 		break;
@@ -2335,6 +2405,19 @@ void process_chat_from_simulator(LLMessageSystem *msg, void **user_data)
 	msg->getUUID("ChatData", "SourceID", from_id);
 	chat.mFromID = from_id;
 	
+	// <edit>
+	// this chatter assignment is moved from below
+	chatter = gObjectList.findObject(from_id);
+	/*
+	if(chatter)
+	{
+		if(chatter->isAvatar())
+		{
+			((LLVOAvatar*)chatter)->resetIdleTime();
+		}
+	}
+	*/
+	// </edit>
 	// Object owner for objects
 	msg->getUUID("ChatData", "OwnerID", owner_id);
 	
@@ -2362,7 +2445,10 @@ void process_chat_from_simulator(LLMessageSystem *msg, void **user_data)
 		LLMuteList::getInstance()->isLinden(from_name);
 
 	BOOL is_audible = (CHAT_AUDIBLE_FULLY == chat.mAudible);
-	chatter = gObjectList.findObject(from_id);
+	// <edit>
+	// because I moved it to above
+	//chatter = gObjectList.findObject(from_id);
+	// </edit>
 	if (chatter)
 	{
 		chat.mPosAgent = chatter->getPositionAgent();
@@ -2393,6 +2479,36 @@ void process_chat_from_simulator(LLMessageSystem *msg, void **user_data)
 		}
 
 		is_owned_by_me = chatter->permYouOwner();
+	}
+
+	U32 links_for_chatting_objects = gSavedSettings.getU32("LinksForChattingObjects");
+	if (links_for_chatting_objects != 0 && chatter && chat.mSourceType == CHAT_SOURCE_OBJECT &&
+#ifdef LL_RRINTERFACE_H //MK
+		(!gRRenabled || !gAgent.mRRInterface.mContainsShownames) &&
+#endif //mk
+		(!is_owned_by_me || links_for_chatting_objects == 2))
+	{
+		LLSD query_string;
+		query_string["name"]  = from_name;
+		query_string["owner"] = owner_id;
+#ifdef LL_RRINTERFACE_H //MK
+		if (!gRRenabled || !gAgent.mRRInterface.mContainsShowloc)
+		{
+#endif //mk
+			// Compute the object SLURL.
+			LLVector3 pos = chatter->getPositionRegion();
+			S32 x = llround((F32)fmod((F64)pos.mV[VX], (F64)REGION_WIDTH_METERS));
+			S32 y = llround((F32)fmod((F64)pos.mV[VY], (F64)REGION_WIDTH_METERS));
+			S32 z = llround((F32)pos.mV[VZ]);
+			std::ostringstream location;
+			location << chatter->getRegion()->getName() << "/" << x << "/" << y << "/" << z;
+			query_string["slurl"] = location.str();
+#ifdef LL_RRINTERFACE_H //MK
+		}
+#endif //mk
+		std::ostringstream link;
+		link << "secondlife:///app/objectim/" << from_id << LLURI::mapToQueryString(query_string);
+		chat.mURL = link.str();
 	}
 
 	if (is_audible)
@@ -2502,11 +2618,17 @@ void process_chat_from_simulator(LLMessageSystem *msg, void **user_data)
 		// F		T		T		T				*			No			No
 		// T		*		*		*				F			Yes			Yes
 
-		chat.mMuted = is_muted && !is_linden;
+		// <edit>
+		//chat.mMuted = is_muted && !is_linden;
+		chat.mMuted = is_muted;
+		// </edit>
 		
 		
 		if (!visible_in_chat_bubble 
-			&& (is_linden || !is_busy || is_owned_by_me))
+		// <edit>
+		//	&& (is_linden || !is_busy || is_owned_by_me))
+			&& (!is_busy || is_owned_by_me))
+		// </edit>
 		{
 			// show on screen and add to history
 			check_translate_chat(mesg, chat, FALSE);
@@ -2939,6 +3061,9 @@ void process_agent_movement_complete(LLMessageSystem* msg, void**)
 		{
 			gAgent.setTeleportState( LLAgent::TELEPORT_NONE );
 		}
+
+		// add teleport destination to the list of visited places
+		gFloaterTeleportHistory->addEntry(regionp->getName(),(S16)agent_pos.mV[0],(S16)agent_pos.mV[1],(S16)agent_pos.mV[2]);
 	}
 	else
 	{
@@ -3130,6 +3255,14 @@ void send_agent_update(BOOL force_send, BOOL send_reliable)
 	// LBUTTON and ML_LBUTTON so that using the camera (alt-key) doesn't
 	// trigger a control event.
 	U32 control_flags = gAgent.getControlFlags();
+
+	// <edit>
+	if(gSavedSettings.getBOOL("Nimble"))
+	{
+		control_flags |= AGENT_CONTROL_FINISH_ANIM;
+	}
+	// </edit>
+
 	MASK	key_mask = gKeyboard->currentMask(TRUE);
 	if (key_mask & MASK_ALT || key_mask & MASK_CONTROL)
 	{
@@ -3501,7 +3634,10 @@ void process_sound_trigger(LLMessageSystem *msg, void **)
 		return;
 	}
 		
-	gAudiop->triggerSound(sound_id, owner_id, gain, LLAudioEngine::AUDIO_TYPE_SFX, pos_global);
+	// <edit>
+	//gAudiop->triggerSound(sound_id, owner_id, gain, LLAudioEngine::AUDIO_TYPE_SFX, pos_global);
+	gAudiop->triggerSound(sound_id, owner_id, gain, LLAudioEngine::AUDIO_TYPE_SFX, pos_global, object_id);
+	// </edit>
 }
 
 void process_preload_sound(LLMessageSystem *msg, void **user_data)
@@ -4980,8 +5116,10 @@ void container_inventory_arrived(LLViewerObject* object,
 // method to format the time.
 std::string formatted_time(const time_t& the_time)
 {
+	std::string timestr;
+	timeToFormattedString(the_time, gSavedSettings.getString("TimestampFormat"), timestr);
 	char buffer[30]; /* Flawfinder: ignore */
-	LLStringUtil::copy(buffer, ctime(&the_time), 30);
+	LLStringUtil::copy(buffer, timestr.c_str(), 30);
 	buffer[24] = '\0';
 	return std::string(buffer);
 }
@@ -5403,6 +5541,9 @@ void process_script_dialog(LLMessageSystem* msg, void**)
 	LLSD args;
 	args["TITLE"] = title;
 	args["MESSAGE"] = message;
+	// <edit>
+	args["CHANNEL"] = chat_channel;
+	// </edit>
 	LLNotificationPtr notification;
 	if (!first_name.empty())
 	{
@@ -5773,4 +5914,16 @@ void LLOfferInfo::forceResponse(InventoryOfferResponse response)
 	params.functor(boost::bind(&LLOfferInfo::inventory_offer_callback, this, _1, _2));
 	LLNotifications::instance().forceResponse(params, response);
 }
+
+// <edit> lol
+void spoof_dropped_callback(LLNetCanary::entry entry)
+{
+	if(gSavedSettings.getBOOL("SpoofProtectionAlerts"))
+	{
+		LLSD args;
+		args["[MESSAGE]"] = llformat("A suspicious %s packet was dropped based on your IP Spoofing Protection settings.", entry.name.c_str());
+		LLNotifications::instance().add("SystemMessageTip",args);
+	}
+}
+// </edit>
 

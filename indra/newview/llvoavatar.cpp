@@ -83,6 +83,12 @@
 #include "llvoiceclient.h"
 #include "llvoicevisualizer.h" // Ventrella
 
+// <edit>
+#include "llfloaterexploreanimations.h"
+#include "llao.h"
+#include "llimagemetadatareader.h"
+// </edit>
+
 #if LL_MSVC
 // disable boost::lexical_cast warning
 #pragma warning (disable:4702)
@@ -218,9 +224,10 @@ public:
 	}
 	BOOL parseXml(LLXmlTreeNode* node);
 	
+	BOOL mIsJoint;
+	
 private:
 	std::string mName;
-	BOOL mIsJoint;
 	LLVector3 mPos;
 	LLVector3 mRot;
 	LLVector3 mScale;
@@ -669,16 +676,16 @@ F32 LLVOAvatar::sRenderDistance = 256.f;
 S32	LLVOAvatar::sNumVisibleAvatars = 0;
 S32	LLVOAvatar::sNumLODChangesThisFrame = 0;
 
-const LLUUID LLVOAvatar::sStepSoundOnLand("e8af4a28-aa83-4310-a7c4-c047e15ea0df");
+const LLUUID LLVOAvatar::sStepSoundOnLand = LLUUID("e8af4a28-aa83-4310-a7c4-c047e15ea0df");
 const LLUUID LLVOAvatar::sStepSounds[LL_MCODE_END] =
 {
-	SND_STONE_RUBBER,
-	SND_METAL_RUBBER,
-	SND_GLASS_RUBBER,
-	SND_WOOD_RUBBER,
-	SND_FLESH_RUBBER,
-	SND_RUBBER_PLASTIC,
-	SND_RUBBER_RUBBER
+	LLUUID(SND_STONE_RUBBER),
+	LLUUID(SND_METAL_RUBBER),
+	LLUUID(SND_GLASS_RUBBER),
+	LLUUID(SND_WOOD_RUBBER),
+	LLUUID(SND_FLESH_RUBBER),
+	LLUUID(SND_RUBBER_PLASTIC),
+	LLUUID(SND_RUBBER_RUBBER)
 };
 
 S32 LLVOAvatar::sRenderName = RENDER_NAME_ALWAYS;
@@ -747,7 +754,15 @@ LLVOAvatar::LLVOAvatar(const LLUUID& id,
 	mNeedsSkin(FALSE),
 	mUpdatePeriod(1),
 	mFullyLoadedInitialized(FALSE),
-	mHasBakedHair( FALSE )
+	mHasBakedHair( FALSE ),
+	mSupportsAlphaLayers(FALSE)
+	// <edit>
+//	mNametagSaysIdle(false),
+//	mIdleForever(true),
+//	mIdleMinutes(0),
+//	mFocusObject(LLUUID::null),
+//	mFocusVector(LLVector3d::zero)
+	// </edit>
 {
 	LLMemType mt(LLMemType::MTYPE_AVATAR);
 	//VTResume();  // VTune
@@ -1564,6 +1579,8 @@ void LLVOAvatar::getSpatialExtents(LLVector3& newMin, LLVector3& newMax)
 //-----------------------------------------------------------------------------
 void LLVOAvatar::renderCollisionVolumes()
 {
+	//BLATANTLY STOLEN FROM SIMMAN DURRR
+	LLGLDepthTest gls_depth(GL_FALSE); //make it so the skeleton shows through the mesh and prims (good for milfags)
 	for (S32 i = 0; i < mNumCollisionVolumes; i++)
 	{
 		mCollisionVolumes[i].renderCollision();
@@ -2462,7 +2479,26 @@ U32 LLVOAvatar::processUpdateMessage(LLMessageSystem *mesgsys,
 
 	//llinfos << getRotation() << llendl;
 	//llinfos << getPosition() << llendl;
-
+	// <edit>
+	if (update_type == OUT_FULL )
+	{
+		
+		if(mIsSelf)
+		{
+			if(gSavedSettings.getBOOL("ReSit"))
+			{
+				gMessageSystem->newMessageFast(_PREHASH_AgentRequestSit);
+				gMessageSystem->nextBlockFast(_PREHASH_AgentData);
+				gMessageSystem->addUUIDFast(_PREHASH_AgentID, gAgent.getID());
+				gMessageSystem->addUUIDFast(_PREHASH_SessionID, gAgent.getSessionID());
+				gMessageSystem->nextBlockFast(_PREHASH_TargetObject);
+				gMessageSystem->addUUIDFast(_PREHASH_TargetID, gReSitTargetID);
+				gMessageSystem->addVector3Fast(_PREHASH_Offset, gReSitOffset);
+				gAgent.getRegion()->sendReliableMessage();
+			}
+		}
+	}
+	// </edit>
 	return retval;
 }
 
@@ -2546,6 +2582,10 @@ BOOL LLVOAvatar::idleUpdate(LLAgent &agent, LLWorld &world, const F64 &time)
 		// trigger fidget anims
 		if (isAnyAnimationSignaled(AGENT_STAND_ANIMS, NUM_AGENT_STAND_ANIMS))
 		{
+			// <edit>
+			if(LLAO::isEnabled())
+				LLAO::mTimer->resume();//Timer only pauses if its not paused, check is inside function.
+			// </edit>
 			agent.fidget();
 		}
 	}
@@ -2977,7 +3017,229 @@ void LLVOAvatar::idleUpdateWindEffect()
 		}
 	}
 }
+void LLVOAvatar::getClientInfo(std::string& client, LLColor4& color, BOOL useComment)
+{
+	std::string uuid_str = getTE(TEX_HEAD_BODYPAINT)->getID().asString(); //UUID of the head texture
+	if(getTEImage(TEX_HEAD_BODYPAINT)->getID() == IMG_DEFAULT_AVATAR)
+	{
+		BOOL res = FALSE;
+		for(int ti = TEX_UPPER_SHIRT; ti < TEX_NUM_INDICES; ti++)
+		{
+			switch((ETextureIndex)ti)
+			{
+				case TEX_HEAD_BODYPAINT:
+				case TEX_UPPER_SHIRT:
+				case TEX_LOWER_PANTS:
+				case TEX_EYES_IRIS:
+				case TEX_HAIR:
+				case TEX_UPPER_BODYPAINT:
+				case TEX_LOWER_BODYPAINT:
+				case TEX_LOWER_SHOES:
+				case TEX_LOWER_SOCKS:
+				case TEX_UPPER_JACKET:
+				case TEX_LOWER_JACKET:
+				case TEX_UPPER_GLOVES:
+				case TEX_UPPER_UNDERSHIRT:
+				case TEX_LOWER_UNDERPANTS:
+				case TEX_SKIRT:
+					if(getTEImage(ti)->getID() != IMG_DEFAULT_AVATAR)
+						res = TRUE;
+					break;
+				default:
+					break;
+			}
+			if(res)
+				break;
+		}
+		if(res)
+		{ 
+			//I found that someone failed at clothing protection
+			if(getTEImage(TEX_EYES_IRIS)->getID().asString() == "4934f1bf-3b1f-cf4f-dbdf-a72550d05bc6"
+			&& getTEImage(TEX_UPPER_BODYPAINT)->getID().asString() == "4934f1bf-3b1f-cf4f-dbdf-a72550d05bc6"
+			&& getTEImage(TEX_LOWER_BODYPAINT)->getID().asString() == "4934f1bf-3b1f-cf4f-dbdf-a72550d05bc6")
+			{
+				color = LLColor4(1.f, 1.0f, 1.0f);
+				client = "Unknown viewer";
+			}
+			return;
+		}
+		else
+		{
+			color = LLColor4(0.5f, 0.5f, 0.5f);
+			client = "Viewer 2.0";
+			return;
+		}
+	}
+	if(getTEImage(TEX_HEAD_BODYPAINT)->isMissingAsset())
+	{
+		color = LLColor4(1.f, 1.0f, 1.0f);
+		client = "Unknown viewer";
+	}
+	else if (uuid_str == "ccda2b3b-e72c-a112-e126-fee238b67218")
+	{
+		// textures other than head are 4934f1bf-3b1f-cf4f-dbdf-a72550d05bc6
+		color = LLColor4(0.f, 1.0f, 0.0f);
+		client = "Emerald";
+		
+	}
+	else if (uuid_str == "0bcd5f5d-a4ce-9ea4-f9e8-15132653b3d8")
+	{
+		color = LLColor4(1.0f, 0.3f, 0.5f);
+		client = "MoyMix";
+		
+	}
+	else if (uuid_str == "5855f37d-63e5-3918-1404-8ffa3820eb6d")
+	{
+		color = LLColor4(1.0f, 0.3f, 0.5f);
+		client = "MoyMix/B";
+		
+	}
+	else if (uuid_str == "9ba526b6-f43d-6b60-42de-ce62a25ee7fb")
+	{
+		color = LLColor4(1.0f, 0.3f, 0.5f);
+		client = "MoyMix/nolife";
+		
+	}
+	//else if (uuid_str == "abbca853-30ba-49c1-a1e7-2a5b9a70573f")
+	//{
+	//	color = LLColor4(0.5f, 0.75f, 1.0f);
+	//	strcat(line, " (CryoLife/" + "A)");
+	//	
+	//}
+	else if (uuid_str == "0f6723d2-5b23-6b58-08ab-308112b33786")
+	{
+		color = LLColor4(0.5f, 0.75f, 1.0f);
+		client = "CryoLife";
+		
+	}
+	else if (uuid_str == "2c9c1e0b-e5d1-263e-16b1-7fc6d169f3d6")
+	{
+		color = LLColor4(0.5f, 0.75f, 1.0f);
+		client = "Phoxy SL";
+		
+	}
+	else if (uuid_str == "c252d89d-6f7c-7d90-f430-d140d2e3fbbe")
+	{
+		color = LLColor4(0.7f, 0.7f, 0.7f);
+		client = "VLife";
+		
+	}
+	else if (uuid_str == "5aa5c70d-d787-571b-0495-4fc1bdef1500")
+	{
+		color = LLColor4(1.f, 0.0f, 0.0f);
+		client = "GridProxy/LordGregGreg";
+		
+	}
+	else if (uuid_str == "8183e823-c443-2142-6eb6-2ab763d4f81c")
+	{
+		color = LLColor4(1.f, 1.f, 0.0f);
+		client = "GridProxy/DayOh";
+		
+	}
+	else if (uuid_str == "f3fd74a6-fee7-4b2f-93ae-ddcb5991da04")
+	{
+		color = LLColor4(1.0f, 0.0f, 1.0f);
+		client = "PSL/A";
+		
+	}
+	else if (uuid_str == "77662f23-c77a-9b4d-5558-26b757b2144c")
+	{
+		color = LLColor4(1.0f, 0.0f, 1.0f);
+		client = "PSL/B";
+		
+	}
+	else if (uuid_str == "1c29480c-c608-df87-28bb-964fb64c5366")
+	{
+		color = LLColor4(1.f, 1.0f, 1.0f);
+		client = "Emerald/GEMINI";
+		
+	}
+	else if (uuid_str == "e6f9c019-8783-dc3e-b265-41f1510333fc")
+	{
+		color = LLColor4(0.4f,0.4f,0.4f);
+		client = "Onyx";
+		
+	}
+	else if (uuid_str == "5262d71a-88f7-ef40-3b15-00ea148ab4b5")
+	{
+		color = LLColor4(0.9f, 0.9f, 0.9f);
+		client = "GEMINI Bot";
+		
+	}
+	else if (uuid_str == "adcbe893-7643-fd12-f61c-0b39717e2e32")
+	{
+		color = LLColor4(1.0f, 0.5f, 0.4f);
+		client = "tyk3n";
+		
+	}
+	else if (uuid_str == "f5a48821-9a98-d09e-8d6a-50cc08ba9a47")
+	{
+		color = gColors.getColor( "AvatarNameColor" );
+		client = "NeilLife";
+		
+	}
+	else if (uuid_str == "cc7a030f-282f-c165-44d2-b5ee572e72bf")
+	{
+		color = LLColor4::purple;
+		client = "Imprudence";
+		
+	}
+	else if (uuid_str == "380ae30b-f2c7-b07c-041e-5688e89a6fc1")
+	{
+		color = LLColor4(0.65f, 0.93f, 0.14f);
+		client = "Nano";
+		
+	}
+	else if (uuid_str == "c58fca06-33b3-827d-d81c-a886a631affc")
+	{
+		color = LLColor4(1.0f,0.61176f,0.0f);
+		client = "Whale";
+		
+	}
+	else if (uuid_str == "872c0005-3095-0967-866d-11cd71115c22")
+	{
+		color = LLColor4(0.25f,0.5f,0.75f);
+		client = "<-- Fag";
+		
+	}
+	else
+	{
+		color = gColors.getColor( "AvatarNameColor" );
+		color.setAlpha(1.f);
+		//llinfos << "Apparently this tag isn't registered: " << uuid_str << llendl;
+	}
 
+	if(useComment)
+	{
+		LLUUID baked_head_id = getTE(9)->getID();
+		LLPointer<LLViewerImage> baked_head_image = gImageList.getImage(baked_head_id);
+		if(baked_head_image && baked_head_image->decodedComment.length())
+		{
+			if(client.length())
+				client += ", ";
+
+			if(baked_head_image->commentEncryptionType == ENC_EMKDU_V1 || baked_head_image->commentEncryptionType == ENC_ONYXKDU)
+				client += "(XOR) ";
+			else if(baked_head_image->commentEncryptionType == ENC_EMKDU_V2)
+				client += "(AES) ";
+
+			client += baked_head_image->decodedComment;
+		}
+
+		LLPointer<LLViewerImage> baked_eye_image = gImageList.getImage(getTE(11)->getID());
+
+		if(baked_eye_image && !baked_eye_image->decodedComment.empty()
+			&& baked_eye_image->decodedComment != baked_head_image->decodedComment)
+		{
+			if(baked_eye_image->commentEncryptionType == ENC_EMKDU_V1 || baked_eye_image->commentEncryptionType == ENC_ONYXKDU)
+				extraMetadata = "(XOR) ";
+			else if(baked_eye_image->commentEncryptionType == ENC_EMKDU_V2)
+				extraMetadata = "(AES) ";
+
+			extraMetadata += baked_eye_image->decodedComment;
+		}
+	}
+}
 void LLVOAvatar::idleUpdateNameTag(const LLVector3& root_pos_last)
 {
 	// update chat bubble
@@ -3022,6 +3284,10 @@ void LLVOAvatar::idleUpdateNameTag(const LLVector3& root_pos_last)
 			new_name = TRUE;
 		}
 
+		// <edit>
+		std::string client;
+		// </edit>
+
 		// First Calculate Alpha
 		// If alpha > 0, create mNameText if necessary, otherwise delete it
 		{
@@ -3062,9 +3328,15 @@ void LLVOAvatar::idleUpdateNameTag(const LLVector3& root_pos_last)
 				}
 				
 				LLColor4 avatar_name_color = gColors.getColor( "AvatarNameColor" );
+				// <edit>
+				if(isFullyLoaded() && !mIsSelf)
+				{
+					getClientInfo(client,avatar_name_color);
+				}
+				// </edit>
 				avatar_name_color.setAlpha(alpha);
 				mNameText->setColor(avatar_name_color);
-				
+
 				LLQuaternion root_rot = mRoot.getWorldRotation();
 				mNameText->setUsePixelSize(TRUE);
 				LLVector3 pixel_right_vec;
@@ -3118,7 +3390,8 @@ void LLVOAvatar::idleUpdateNameTag(const LLVector3& root_pos_last)
 				(!title && !mTitle.empty()) ||
 				(title && mTitle != title->getString()) ||
 				(is_away != mNameAway || is_busy != mNameBusy || is_muted != mNameMute)
-				|| is_appearance != mNameAppearance)
+				|| is_appearance != mNameAppearance
+				|| client.length() ) // <edit>
 			{
 				std::string line;
 				if (!sRenderGroupTitles)
@@ -3144,11 +3417,20 @@ void LLVOAvatar::idleUpdateNameTag(const LLVector3& root_pos_last)
 				line += lastname->getString();
 				BOOL need_comma = FALSE;
 
-				if (is_away || is_muted || is_busy)
+				if (client.length() || is_away || is_muted || is_busy)
 				{
 					line += " (";
+					if (client != "")
+					{
+						line += client;
+						need_comma = TRUE;
+					}
 					if (is_away)
 					{
+						if (need_comma)
+						{
+							line += ", ";
+						}
 						line += "Away";
 						need_comma = TRUE;
 					}
@@ -3301,6 +3583,14 @@ void LLVOAvatar::idleUpdateTractorBeam()
 	{
 		return;
 	}
+
+	// <edit>
+	if(gSavedSettings.getBOOL("DisablePointAtAndBeam"))
+	{
+		return;
+	}
+	// </edit>
+
 	const LLPickInfo& pick = gViewerWindow->getLastPick();
 
 	// No beam for media textures
@@ -4211,15 +4501,9 @@ U32 LLVOAvatar::renderSkinned(EAvatarRenderPass pass)
 
 	if (pass == AVATAR_RENDER_PASS_SINGLE)
 	{
-		const bool should_alpha_mask = mHasBakedHair && isTextureDefined(TEX_HEAD_BAKED) && isTextureDefined(TEX_UPPER_BAKED) 
-										&& isTextureDefined(TEX_LOWER_BAKED) 
-										&& mBakedTextureData[BAKED_HEAD].mIsLoaded
-										&& mBakedTextureData[BAKED_UPPER].mIsLoaded && mBakedTextureData[BAKED_LOWER].mIsLoaded
-										&& mBakedTextureData[BAKED_HEAD].mIsUsed
-										&& mBakedTextureData[BAKED_UPPER].mIsUsed && mBakedTextureData[BAKED_LOWER].mIsUsed
-										&& !LLDrawPoolAlpha::sShowDebugAlpha // Don't alpha mask if "Highlight Transparent" checked
-										&& !(isSelf() && gAgent.cameraCustomizeAvatar()); // don't alpha mask if in customize mode
-
+		const bool should_alpha_mask = mSupportsAlphaLayers && mHasBakedHair
+									    && !LLDrawPoolAlpha::sShowDebugAlpha // Don't alpha mask if "Highlight Transparent" checked
+										&& !LLDrawPoolAvatar::sSkipTransparent;
 		LLGLState test(GL_ALPHA_TEST, should_alpha_mask);
 
 		if (should_alpha_mask)
@@ -4331,27 +4615,25 @@ U32 LLVOAvatar::renderRigid()
 		return 0;
 	}
 
+	const bool should_alpha_mask = mSupportsAlphaLayers && mHasBakedHair
+								    && !LLDrawPoolAlpha::sShowDebugAlpha // Don't alpha mask if "Highlight Transparent" checked
+									&& !LLDrawPoolAvatar::sSkipTransparent;
+
+	LLGLState test(GL_ALPHA_TEST, should_alpha_mask);
+
+	if (should_alpha_mask)
+	{
+		gGL.setAlphaRejectSettings(LLRender::CF_GREATER, 0.5f);
+	}
+
 	if (isTextureVisible(TEX_EYES_BAKED) || mIsDummy)
 	{
-		// If the meshes need to be drawn, enable alpha masking but not blending
-		bool should_alpha_mask = mHasBakedHair 
-					&& mBakedTextureData[BAKED_EYES].mIsLoaded
-					&& mBakedTextureData[BAKED_EYES].mIsUsed
-					&& !(isSelf() && gAgent.cameraCustomizeAvatar());
-
-		LLGLState test(GL_ALPHA_TEST, should_alpha_mask);
-		
-		if (should_alpha_mask)
-		{
-			gGL.setAlphaRejectSettings(LLRender::CF_GREATER, 0.5f);
-		}
-
 		num_indices += mMeshLOD[MESH_ID_EYEBALL_LEFT]->render(mAdjustedPixelArea, TRUE, mIsDummy);
 		num_indices += mMeshLOD[MESH_ID_EYEBALL_RIGHT]->render(mAdjustedPixelArea, TRUE, mIsDummy);
-
-		gGL.setAlphaRejectSettings(LLRender::CF_DEFAULT);
 	}
-	
+
+	gGL.setAlphaRejectSettings(LLRender::CF_DEFAULT);
+
 	return num_indices;
 }
 
@@ -4524,6 +4806,7 @@ void LLVOAvatar::updateTextures()
 			// Spam if this is a baked texture, not set to default image, without valid host info
 			if (isIndexBakedTexture((ETextureIndex)index)
 				&& imagep->getID() != IMG_DEFAULT_AVATAR
+				&& imagep->getID() != IMG_INVISIBLE
 				&& !imagep->getTargetHost().isOk())
 			{
 				LL_WARNS_ONCE("Texture") << "LLVOAvatar::updateTextures No host for texture "
@@ -4609,7 +4892,6 @@ void LLVOAvatar::addLocalTextureStats( ETextureIndex idx, LLViewerImage* imagep,
 			    
 void LLVOAvatar::addBakedTextureStats( LLViewerImage* imagep, F32 pixel_area, F32 texel_area_ratio, S32 boost_level)
 {
-	imagep->setCanUseHTTP(false) ; //turn off http fetching for baked textures.
 	mMaxPixelArea = llmax(pixel_area, mMaxPixelArea);
 	mMinPixelArea = llmin(pixel_area, mMinPixelArea);
 	imagep->addTextureStats(pixel_area / texel_area_ratio);
@@ -4730,6 +5012,9 @@ void LLVOAvatar::processAnimationStateChanges()
 		if (found_anim == mSignaledAnimations.end())
 		{
 			processSingleAnimationStateChange(anim_it->first, FALSE);
+			// <edit>
+			LLFloaterExploreAnimations::stopAnim(getID(), anim_it->first);
+			// </edit>
 			mPlayingAnimations.erase(anim_it++);
 			continue;
 		}
@@ -4745,6 +5030,9 @@ void LLVOAvatar::processAnimationStateChanges()
 		// signaled but not playing, or different sequence id, start motion
 		if (found_anim == mPlayingAnimations.end() || found_anim->second != anim_it->second)
 		{
+			// <edit>
+			LLFloaterExploreAnimations::startAnim(getID(), anim_it->first);
+			// </edit>
 			if (processSingleAnimationStateChange(anim_it->first, TRUE))
 			{
 				mPlayingAnimations[anim_it->first] = anim_it->second;
@@ -4789,7 +5077,7 @@ BOOL LLVOAvatar::processSingleAnimationStateChange( const LLUUID& anim_id, BOOL 
 
 	if ( start ) // start animation
 	{
-		if (anim_id == ANIM_AGENT_TYPE)
+		if (anim_id == ANIM_AGENT_TYPE && gSavedSettings.getBOOL("PlayTypingSound"))
 		{
 			if (gAudiop)
 			{
@@ -4871,7 +5159,27 @@ void LLVOAvatar::resetAnimations()
 BOOL LLVOAvatar::startMotion(const LLUUID& id, F32 time_offset)
 {
 	LLMemType mt(LLMemType::MTYPE_AVATAR);
-	
+
+	// <edit>
+	if(mIsSelf)
+	{
+		if(LLAO::isEnabled())
+		{
+			if(LLAO::mOverrides.find(id) != LLAO::mOverrides.end())
+			{
+				// avoid infinite loops!
+				if( (id != LLAO::mOverrides[id])
+				 && (LLAO::mOverrides.find(LLAO::mOverrides[id]) == LLAO::mOverrides.end()) )
+				{
+					//llinfos << "AO: Replacing " << id.asString() << " with " << LLAO::mOverrides[id].asString() << llendl;
+					gAgent.sendAnimationRequest(LLAO::mOverrides[id], ANIM_REQUEST_START);
+					startMotion(LLAO::mOverrides[id], time_offset);
+				}
+			}
+		}
+	}
+	// </edit>
+
 	// start special case female walk for female avatars
 	if (getSex() == SEX_FEMALE)
 	{
@@ -4892,7 +5200,6 @@ BOOL LLVOAvatar::startMotion(const LLUUID& id, F32 time_offset)
 
 	return LLCharacter::startMotion(id, time_offset);
 }
-
 //-----------------------------------------------------------------------------
 // stopMotion()
 //-----------------------------------------------------------------------------
@@ -4900,6 +5207,17 @@ BOOL LLVOAvatar::stopMotion(const LLUUID& id, BOOL stop_immediate)
 {
 	if (mIsSelf)
 	{
+		// <edit>
+		if(LLAO::isEnabled())
+		{
+			if( (LLAO::mOverrides.find(id) != LLAO::mOverrides.end())
+			 && (id != LLAO::mOverrides[id]) )
+			{
+				gAgent.sendAnimationRequest(LLAO::mOverrides[id], ANIM_REQUEST_STOP);
+				stopMotion(LLAO::mOverrides[id], stop_immediate);
+			}
+		}
+		// </edit>
 		gAgent.onAnimStop(id);
 	}
 
@@ -5312,6 +5630,7 @@ BOOL LLVOAvatar::loadAvatar()
 				if (layer_set->isBodyRegion(baked_dict->mName))
 				{
 					mBakedTextureData[baked_iter->first].mTexLayerSet = layer_set;
+					layer_set->setBakedTexIndex(baked_iter->first);
 					found_baked_entry = true;
 					break;
 				}
@@ -5987,6 +6306,40 @@ BOOL LLVOAvatar::attachObject(LLViewerObject *viewer_object)
 {
 	LLViewerJointAttachment* attachment = getTargetAttachmentPoint(viewer_object);
 
+	// <edit> testzone attachpt
+	if(!attachment)
+	{
+		S32 attachmentID = ATTACHMENT_ID_FROM_STATE(viewer_object->getState());
+		LLUUID item_id;
+		LLNameValue* item_id_nv = viewer_object->getNVPair("AttachItemID");
+		if( item_id_nv )
+		{
+			const char* s = item_id_nv->getString();
+			if(s)
+				item_id.set(s);
+		}
+		if(!item_id.isNull())
+		{
+			mUnsupportedAttachmentPoints[attachmentID] = item_id;
+			if (viewer_object->isSelected())
+			{
+				LLSelectMgr::getInstance()->updateSelectionCenter();
+				LLSelectMgr::getInstance()->updatePointAt();
+			}
+
+			if (mIsSelf)
+			{
+				updateAttachmentVisibility(gAgent.getCameraMode());
+				
+				// Then make sure the inventory is in sync with the avatar.
+				gInventory.addChangedMask( LLInventoryObserver::LABEL, item_id );
+				gInventory.notifyObservers();
+			}
+		}
+		else
+			llwarns << "No item ID" << llendl;
+	}
+	// </edit>
 	if (!attachment || !attachment->addObject(viewer_object))
 	{
 		return FALSE;
@@ -6097,6 +6450,55 @@ BOOL LLVOAvatar::detachObject(LLViewerObject *viewer_object)
 		}
 	}
 
+	// <edit> testzone attachpt
+	LLUUID item_id;
+	LLNameValue* item_id_nv = viewer_object->getNVPair("AttachItemID");
+	if( item_id_nv )
+	{
+		const char* s = item_id_nv->getString();
+		if(s)
+			item_id.set(s);
+	}
+	if(!item_id.isNull())
+	{
+		std::map<S32, LLUUID>::iterator iter = mUnsupportedAttachmentPoints.begin();
+		std::map<S32, LLUUID>::iterator end = mUnsupportedAttachmentPoints.end();
+		for( ; iter != end; ++iter)
+		{
+			if((*iter).second == item_id)
+			{
+				mUnsupportedAttachmentPoints.erase((*iter).first);
+				if (mIsSelf)
+				{
+					// the simulator should automatically handle
+					// permission revocation
+
+					stopMotionFromSource(viewer_object->getID());
+					LLFollowCamMgr::setCameraActive(viewer_object->getID(), FALSE);
+
+					LLViewerObject::const_child_list_t& child_list = viewer_object->getChildren();
+					for (LLViewerObject::child_list_t::const_iterator iter = child_list.begin();
+						 iter != child_list.end(); iter++)
+					{
+						LLViewerObject* child_objectp = *iter;
+						// the simulator should automatically handle
+						// permissions revocation
+
+						stopMotionFromSource(child_objectp->getID());
+						LLFollowCamMgr::setCameraActive(child_objectp->getID(), FALSE);
+					}
+					// Then make sure the inventory is in sync with the avatar.
+					gInventory.addChangedMask(LLInventoryObserver::LABEL, item_id);
+					gInventory.notifyObservers();
+				}
+				return TRUE;
+			}
+		}
+		llwarns << "Not found" << llendl;
+	}
+	else
+		llwarns << "No item ID" << llendl;
+	// </edit>
 	
 	return FALSE;
 }
@@ -6205,6 +6607,18 @@ void LLVOAvatar::getOffObject()
 		gAgent.setThirdPersonHeadOffset(LLVector3(0.f, 0.f, 1.f));
 
 		gAgent.setSitCamera(LLUUID::null);
+
+		if (!sit_object->permYouOwner() && gSavedSettings.getBOOL("RevokePermsOnStandUp"))
+		{
+			gMessageSystem->newMessageFast(_PREHASH_RevokePermissions);
+			gMessageSystem->nextBlockFast(_PREHASH_AgentData);
+			gMessageSystem->addUUIDFast(_PREHASH_AgentID, gAgent.getID());
+			gMessageSystem->addUUIDFast(_PREHASH_SessionID, gAgent.getSessionID());
+			gMessageSystem->nextBlockFast(_PREHASH_Data);
+			gMessageSystem->addUUIDFast(_PREHASH_ObjectID, sit_object->getID());
+			gMessageSystem->addU32Fast(_PREHASH_ObjectPermissions, 0xFFFFFFFF);
+			gAgent.sendReliableMessage();
+		}
 	}
 }
 
@@ -6248,6 +6662,19 @@ BOOL LLVOAvatar::isWearingAttachment( const LLUUID& inv_item_id )
 	return FALSE;
 }
 
+// <edit> testzone attachpt
+BOOL LLVOAvatar::isWearingUnsupportedAttachment( const LLUUID& inv_item_id )
+{
+	std::map<S32, LLUUID>::iterator end = mUnsupportedAttachmentPoints.end();
+	for(std::map<S32, LLUUID>::iterator iter = mUnsupportedAttachmentPoints.begin(); iter != end; ++iter)
+	{
+		if((*iter).second == inv_item_id)
+		{
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
 //-----------------------------------------------------------------------------
 // getWornAttachment()
 //-----------------------------------------------------------------------------
@@ -6977,6 +7404,9 @@ void LLVOAvatar::updateMeshTextures()
 
 	}
 
+	// Turn on alpha masking correctly for yourself and other avatars on 1.23+
+	mSupportsAlphaLayers = isSelf() || is_layer_baked[BAKED_HAIR];
+
 	// Baked textures should be requested from the sim this avatar is on. JC
 	const LLHost target_host = getObjectHost();
 	if (!target_host.isOk())
@@ -7006,7 +7436,7 @@ void LLVOAvatar::updateMeshTextures()
 			else
 			{
 				mBakedTextureData[i].mIsLoaded = FALSE;
-				if ( (i == BAKED_HEAD) || (i == BAKED_UPPER) || (i == BAKED_LOWER) )
+				if ((baked_img->getID() != IMG_INVISIBLE) && (i == BAKED_HEAD || i == BAKED_UPPER || i == BAKED_LOWER))
 				{
 					baked_img->setLoadedCallback(onBakedTextureMasksLoaded, MORPH_MASK_REQUESTED_DISCARD, TRUE, TRUE, new LLTextureMaskData( mID ));	
 				}
@@ -7278,7 +7708,13 @@ void LLVOAvatar::setNewBakedTexture( ETextureIndex te, const LLUUID& uuid )
 	// Baked textures live on other sims.
 	LLHost target_host = getObjectHost();	
 	setTEImage( te, gImageList.getImageFromHost( uuid, target_host ) );
-	updateMeshTextures();
+	if (uuid != IMG_INVISIBLE)
+	{
+		// Do not update textures when setting a new invisible baked texture as
+		// it would result in destroying the calling object (setNewBakedTexture()
+		// is called by LLTexLayerSetBuffer::render()) !
+		updateMeshTextures();
+	}
 	dirtyMesh();
 
 
@@ -7291,7 +7727,7 @@ void LLVOAvatar::setNewBakedTexture( ETextureIndex te, const LLUUID& uuid )
 	if (text_dict->mIsBakedTexture)
 	{
 		llinfos << "New baked texture: " << text_dict->mName << " UUID: " << uuid <<llendl;
-		mBakedTextureData[text_dict->mBakedTextureIndex].mTexLayerSet->requestUpdate();
+		//mBakedTextureData[text_dict->mBakedTextureIndex].mTexLayerSet->requestUpdate();
 	}
 	else
 	{
@@ -7535,6 +7971,10 @@ void LLVOAvatar::dumpAvatarTEs( const std::string& context )
 		{
 			llinfos << "       " << text_dict->mName << ": IMG_DEFAULT" << llendl;
 		}
+		else if (te_image->getID() == IMG_INVISIBLE)
+		{
+			llinfos << "       " << text_dict->mName << ": IMG_INVISIBLE" << llendl;
+		}
 		else if( te_image->getID() == IMG_DEFAULT_AVATAR )
 		{
 			llinfos << "       " << text_dict->mName << ": IMG_DEFAULT_AVATAR" << llendl;
@@ -7706,11 +8146,11 @@ BOOL LLVOAvatar::isWearingWearableType( EWearableType type )
 }
 
 //-----------------------------------------------------------------------------
-// updatedWearable( EWearableType type )
+// wearableUpdated(EWearableType type, BOOL upload_result)
 // forces an update to any baked textures relevant to type.
-// Should be called only on saving the wearable
+// will force an upload of the resulting bake if the second parameter is TRUE
 //-----------------------------------------------------------------------------
-void LLVOAvatar::wearableUpdated( EWearableType type )
+void LLVOAvatar::wearableUpdated(EWearableType type, BOOL upload_result)
 {
 	for (LLVOAvatarDictionary::wearable_map_t::const_iterator wearable_iter = LLVOAvatarDictionary::getInstance()->getWearables().begin();
 		wearable_iter != LLVOAvatarDictionary::getInstance()->getWearables().end();
@@ -7729,8 +8169,8 @@ void LLVOAvatar::wearableUpdated( EWearableType type )
 				{
 					if (mBakedTextureData[index].mTexLayerSet)
 					{
-						mBakedTextureData[index].mTexLayerSet->requestUpdate();
-						mBakedTextureData[index].mTexLayerSet->requestUpload();
+						invalidateComposite(mBakedTextureData[index].mTexLayerSet, upload_result);
+						updateMeshTextures();
 					}
 					break;	
 				}
@@ -7829,7 +8269,7 @@ void LLVOAvatar::onFirstTEMessageReceived()
 				LLViewerImage* image = getTEImage( mBakedTextureData[i].mTextureIndex );
 				mBakedTextureData[i].mLastTextureIndex = image->getID();
 				// If we have more than one texture for the other baked layers, we'll want to call this for them too.
-				if ( (i == BAKED_HEAD) || (i == BAKED_UPPER) || (i == BAKED_LOWER) )
+				if ((image->getID() != IMG_INVISIBLE) && (i == BAKED_HEAD || i == BAKED_UPPER || i == BAKED_LOWER))
 				{
 					image->setLoadedCallback( onBakedTextureMasksLoaded, MORPH_MASK_REQUESTED_DISCARD, TRUE, TRUE, new LLTextureMaskData( mID ));
 				}
@@ -7907,12 +8347,16 @@ void LLVOAvatar::processAvatarAppearance( LLMessageSystem* mesgsys )
 	}
 
 	setCompositeUpdatesEnabled( FALSE );
-
+	// <edit>
+/*
 	if (!mIsSelf)
 	{
+		
 		releaseUnnecessaryTextures();
+		
 	}
-	
+*/
+	// </edit>
 	updateMeshTextures(); // enables updates for laysets without baked textures.
 
 	// parse visual params
@@ -8085,7 +8529,7 @@ void LLVOAvatar::onBakedTextureMasksLoaded( BOOL success, LLViewerImage *src_vi,
 				{
 					const ETextureIndex texture_index = iter->first;
 					const LLViewerImage *baked_img = self->getTEImage(texture_index);
-					if (id == baked_img->getID())
+					if (baked_img && id == baked_img->getID())
 					{
 						const EBakedTextureIndex baked_index = text_dict->mBakedTextureIndex;
 						if (self->mBakedTextureData[baked_index].mTexLayerSet)
@@ -8498,7 +8942,10 @@ void LLVOAvatar::dumpLocalTextures()
 				llinfos << "LocTex " << name << ": "
 						<< "Discard " << image->getDiscardLevel() << ", "
 						<< "(" << image->getWidth() << ", " << image->getHeight() << ") " 
-#if !LL_RELEASE_FOR_DOWNLOAD
+// <edit>
+//#if !LL_RELEASE_FOR_DOWNLOAD
+#if 1
+// </edit>
 					// End users don't get to trivially see avatar texture IDs,
 					// makes textures easier to steal
 						<< image->getID() << " "

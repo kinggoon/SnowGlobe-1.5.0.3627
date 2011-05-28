@@ -291,6 +291,30 @@ void LLFolderViewItem::refreshFromListener()
 		}
 		mLabelStyle = mListener->getLabelStyle();
 		mLabelSuffix = mListener->getLabelSuffix();
+
+		LLInventoryItem* item = gInventory.getItem(mListener->getUUID());
+
+		std::string desc;
+		if (item)
+		{
+			if (!item->getDescription().empty())
+			{
+				desc = item->getDescription();
+				LLStringUtil::toUpper(desc);
+			}
+		}
+		mSearchableLabelDesc = desc;
+
+		std::string creator_name;
+		if (item)
+		{
+			if (item->getCreatorUUID().notNull())
+			{
+				gCacheName->getFullName(item->getCreatorUUID(), creator_name);
+				LLStringUtil::toUpper(creator_name);
+			}
+		}
+		mSearchableLabelCreator = creator_name;
 	}
 }
 
@@ -604,9 +628,31 @@ void LLFolderViewItem::rename(const std::string& new_name)
 	}
 }
 
-const std::string& LLFolderViewItem::getSearchableLabel() const
+std::string& LLFolderViewItem::getSearchableLabel()
 {
-	return mSearchableLabel;
+	mSearchable = "";
+	U32 flags = mRoot->getSearchType();
+	if (flags == 0 || (flags & 1))
+	{
+		mSearchable = mSearchableLabel;
+	}
+	if (flags & 2)
+	{
+		if (mSearchable.length())
+		{
+			mSearchable += " ";
+		}
+		mSearchable += mSearchableLabelDesc;
+	}
+	if (flags & 4)
+	{
+		if (mSearchable.length())
+		{
+			mSearchable += " ";
+		}
+		mSearchable += mSearchableLabelCreator;
+	}
+	return mSearchable;
 }
 
 const std::string& LLFolderViewItem::getName( void ) const
@@ -692,7 +738,12 @@ BOOL LLFolderViewItem::handleHover( S32 x, S32 y, MASK mask )
 				{
 					src = LLToolDragAndDrop::SOURCE_LIBRARY;
 				}
-
+				// <edit>
+				else if(mListener && gInventory.isObjectDescendentOf(mListener->getUUID(), gLocalInventoryRoot))
+				{ // Note: this is only ok if all future pretend folders are subcategories of Pretend Inventory
+					src = LLToolDragAndDrop::SOURCE_LIBRARY;
+				}
+				// </edit>
 				can_drag = root->startDrag(src);
 				if (can_drag)
 				{
@@ -733,7 +784,10 @@ BOOL LLFolderViewItem::handleHover( S32 x, S32 y, MASK mask )
 
 BOOL LLFolderViewItem::handleDoubleClick( S32 x, S32 y, MASK mask )
 {
-	preview();
+	// <edit>
+	//preview();
+	openItem();
+	// </edit>
 	return TRUE;
 }
 
@@ -964,10 +1018,13 @@ void LLFolderViewItem::draw()
 		if (sBoxImage.notNull() && mStringMatchOffset != std::string::npos)
 		{
 			// don't draw backgrounds for zero-length strings
+			std::string combined_string = mLabel + mLabelSuffix;
 			S32 filter_string_length = mRoot->getFilterSubString().size();
-			if (filter_string_length > 0)
+			std::string combined_string_upper = combined_string;
+			LLStringUtil::toUpper(combined_string_upper);
+			if (filter_string_length > 0 && (mRoot->getSearchType() & 1) &&
+				combined_string_upper.find(mRoot->getFilterSubString()) == mStringMatchOffset)
 			{
-				std::string combined_string = mLabel + mLabelSuffix;
 				S32 left = llround(text_left) + sFont->getWidth(combined_string, 0, mStringMatchOffset) - 1;
 				S32 right = left + sFont->getWidth(combined_string, mStringMatchOffset, filter_string_length) + 2;
 				S32 bottom = llfloor(getRect().getHeight() - sFont->getLineHeight() - 3);
@@ -2552,6 +2609,7 @@ LLFolderView::LLFolderView( const std::string& name, LLUIImagePtr root_folder_ic
 	mNeedsAutoRename(FALSE),
 	mDebugFilters(FALSE),
 	mSortOrder(LLInventoryFilter::SO_FOLDERS_BY_NAME),	// This gets overridden by a pref immediately
+	mSearchType(1),
 	mFilter(name),
 	mShowSelectionContext(FALSE),
 	mShowSingleSelection(FALSE),
@@ -2679,6 +2737,59 @@ void LLFolderView::setSortOrder(U32 order)
 U32 LLFolderView::getSortOrder() const
 {
 	return mSortOrder;
+}
+
+U32 LLFolderView::toggleSearchType(std::string toggle)
+{
+	if (toggle == "name")
+	{
+		if (mSearchType & 1)
+		{
+			mSearchType &= 6;
+		}
+		else
+		{
+			mSearchType |= 1;
+		}
+	}
+	else if (toggle == "description")
+	{
+		if (mSearchType & 2)
+		{
+			mSearchType &= 5;
+		}
+		else
+		{
+			mSearchType |= 2;
+		}
+	}
+	else if (toggle == "creator")
+	{
+		if (mSearchType & 4)
+		{
+			mSearchType &= 3;
+		}
+		else
+		{
+			mSearchType |= 4;
+		}
+	}
+	if (mSearchType == 0)
+	{
+		mSearchType = 1;
+	}
+
+	if (getFilterSubString().length())
+	{
+		mFilter.setModified(LLInventoryFilter::FILTER_RESTART);
+	}
+
+	return mSearchType;
+}
+
+U32 LLFolderView::getSearchType() const
+{
+	return mSearchType;
 }
 
 BOOL LLFolderView::addFolder( LLFolderViewFolder* folder)
@@ -3727,12 +3838,15 @@ BOOL LLFolderView::handleKeyHere( KEY key, MASK mask )
 		break;
 
 	case KEY_ESCAPE:
-		if( mRenameItem && mRenamer->getVisible() )
+		if (mask == MASK_NONE)
 		{
-			closeRenamer();
-			handled = TRUE;
+			if( mRenameItem && mRenamer->getVisible() )
+			{
+				closeRenamer();
+				handled = TRUE;
+			}
+			mSearchString.clear();
 		}
-		mSearchString.clear();
 		break;
 
 	case KEY_PAGE_UP:
@@ -4026,7 +4140,7 @@ BOOL LLFolderView::search(LLFolderViewItem* first_item, const std::string &searc
 			}
 		}
 
-		const std::string current_item_label(search_item->getSearchableLabel());
+		std::string current_item_label(search_item->getSearchableLabel());
 		S32 search_string_length = llmin(upper_case_string.size(), current_item_label.size());
 		if (!current_item_label.compare(0, search_string_length, upper_case_string))
 		{

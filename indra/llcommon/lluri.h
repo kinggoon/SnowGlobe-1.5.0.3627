@@ -47,7 +47,7 @@ class LLApp;
  * See: http://www.ietf.org/rfc/rfc3986.txt
  *
  */
-class LL_COMMON_API LLURI
+class LLURI
 {
 public:
   LLURI();
@@ -189,6 +189,6 @@ private:
 };
 
 // this operator required for tut
-LL_COMMON_API bool operator!=(const LLURI& first, const LLURI& second);
+bool operator!=(const LLURI& first, const LLURI& second);
 
 #endif // LL_LLURI_H

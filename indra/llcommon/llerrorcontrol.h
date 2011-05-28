@@ -63,12 +63,12 @@ public:
 
 namespace LLError
 {
-	LL_COMMON_API void initForServer(const std::string& identity);
+	void initForServer(const std::string& identity);
 		// resets all logging settings to defaults needed by server processes
 		// logs to stderr, syslog, and windows debug log
 		// the identity string is used for in the syslog
 
-	LL_COMMON_API void initForApplication(const std::string& dir);
+	void initForApplication(const std::string& dir);
 		// resets all logging settings to defaults needed by applicaitons
 		// logs to stderr and windows debug log
 		// sets up log configuration from the file logcontrol.xml in dir
@@ -79,14 +79,14 @@ namespace LLError
 		Setting a level means log messages at that level or above.
 	*/
 	
-	LL_COMMON_API void setPrintLocation(bool);
-	LL_COMMON_API void setDefaultLevel(LLError::ELevel);
-	LL_COMMON_API void setFunctionLevel(const std::string& function_name, LLError::ELevel);
-	LL_COMMON_API void setClassLevel(const std::string& class_name, LLError::ELevel);
-	LL_COMMON_API void setFileLevel(const std::string& file_name, LLError::ELevel);
-	LL_COMMON_API void setTagLevel(const std::string& file_name, LLError::ELevel);
+	void setPrintLocation(bool);
+	void setDefaultLevel(LLError::ELevel);
+	void setFunctionLevel(const std::string& function_name, LLError::ELevel);
+	void setClassLevel(const std::string& class_name, LLError::ELevel);
+	void setFileLevel(const std::string& file_name, LLError::ELevel);
+	void setTagLevel(const std::string& file_name, LLError::ELevel);
 	
-	LL_COMMON_API void configure(const LLSD&);
+	void configure(const LLSD&);
 		// the LLSD can configure all of the settings
 		// usually read automatically from the live errorlog.xml file
 
@@ -96,25 +96,25 @@ namespace LLError
 	*/
 
 	typedef void(*FatalFunction)(const std::string& message);
-	LL_COMMON_API void crashAndLoop(const std::string& message);
+	void crashAndLoop(const std::string& message);
 		// Default fatal funtion: access null pointer and loops forever
 
-	LL_COMMON_API void setFatalFunction(FatalFunction);
+	void setFatalFunction(FatalFunction);
 		// The fatal function will be called when an message of LEVEL_ERROR
 		// is logged.  Note: supressing a LEVEL_ERROR message from being logged
 		// (by, for example, setting a class level to LEVEL_NONE), will keep
 		// the that message from causing the fatal funciton to be invoked.
 		
 	typedef std::string (*TimeFunction)();
-	LL_COMMON_API std::string utcTime();
+	std::string utcTime();
 	
-	LL_COMMON_API void setTimeFunction(TimeFunction);
+	void setTimeFunction(TimeFunction);
 		// The function is use to return the current time, formatted for
 		// display by those error recorders that want the time included.
 
 
 
-	class LL_COMMON_API Recorder
+	class Recorder
 	{
 		// An object that handles the actual output or error messages.
 	public:
@@ -128,17 +128,17 @@ namespace LLError
 			// included in the text of the message
 	};
 	
-	LL_COMMON_API void addRecorder(Recorder*);
-	LL_COMMON_API void removeRecorder(Recorder*);
+	void addRecorder(Recorder*);
+	void removeRecorder(Recorder*);
 		// each error message is passed to each recorder via recordMessage()
 	
-	LL_COMMON_API void logToFile(const std::string& filename);
-	LL_COMMON_API void logToFixedBuffer(LLLineBuffer*);
+	void logToFile(const std::string& filename);
+	void logToFixedBuffer(LLLineBuffer*);
 		// Utilities to add recorders for logging to a file or a fixed buffer
 		// A second call to the same function will remove the logger added
 		// with the first.
 		// Passing the empty string or NULL to just removes any prior.
-	LL_COMMON_API std::string logFileName();
+	std::string logFileName();
 		// returns name of current logging file, empty string if none
 
 
@@ -147,11 +147,11 @@ namespace LLError
 	*/
 
 	class Settings;
-	LL_COMMON_API Settings* saveAndResetSettings();
-	LL_COMMON_API void restoreSettings(Settings *);
+	Settings* saveAndResetSettings();
+	void restoreSettings(Settings *);
 		
-	LL_COMMON_API std::string abbreviateFile(const std::string& filePath);
-	LL_COMMON_API int shouldLogCallCount();
+	std::string abbreviateFile(const std::string& filePath);
+	int shouldLogCallCount();
 	
 };
 

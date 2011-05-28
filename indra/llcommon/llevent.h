@@ -44,7 +44,7 @@ class LLEventDispatcher;
 class LLObservable;
 
 // Abstract event. All events derive from LLEvent
-class LL_COMMON_API LLEvent : public LLThreadSafeRefCount
+class LLEvent : public LLThreadSafeRefCount
 {
 protected:
 	virtual ~LLEvent();
@@ -72,7 +72,7 @@ private:
 };
 
 // Abstract listener. All listeners derive from LLEventListener
-class LL_COMMON_API LLEventListener : public LLThreadSafeRefCount
+class LLEventListener : public LLThreadSafeRefCount
 {
 protected:
 	virtual ~LLEventListener();
@@ -89,7 +89,7 @@ public:
 };
 
 // A listener which tracks references to it and cleans up when it's deallocated
-class LL_COMMON_API LLSimpleListener : public LLEventListener
+class LLSimpleListener : public LLEventListener
 {
 public:
 	void clearDispatchers();
@@ -114,7 +114,7 @@ struct LLListenerEntry
 // Base class for a dispatcher - an object which listens
 // to events being fired and relays them to their
 // appropriate destinations.
-class LL_COMMON_API LLEventDispatcher : public LLThreadSafeRefCount
+class LLEventDispatcher : public LLThreadSafeRefCount
 {
 protected:
 	virtual ~LLEventDispatcher();
@@ -157,7 +157,7 @@ private:
 // In order for this class to work properly, it needs
 // an instance of an LLEventDispatcher to route events to their
 // listeners.
-class LL_COMMON_API LLObservable
+class LLObservable
 {
 public:
 	// Initialize with the default Dispatcher

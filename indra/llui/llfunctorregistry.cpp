@@ -31,7 +31,6 @@
  * $/LicenseInfo$
  **/
 
-#include "linden_common.h"
 #include "llfunctorregistry.h"
 
 // This is a default functor always resident in the system.

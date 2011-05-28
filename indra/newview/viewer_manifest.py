@@ -124,7 +124,8 @@ class ViewerManifest(LLManifest):
         return self.args['branding_id']
     def installer_prefix(self):
         mapping={"secondlife":'SecondLife_',
-                 "snowglobe":'Snowglobe_'}
+                 "snowglobe":'Snowglobe_',
+                 "Inertia":'Inertia_'}
         return mapping[self.viewer_branding_id()]
 
     def flags_list(self):
@@ -200,14 +201,6 @@ class WindowsManifest(ViewerManifest):
 
         # For using FMOD for sound... DJS
         self.path("fmod.dll")
-
-        # Get llcommon and deps.
-        if self.prefix(src=self.args['configuration'], dst=""):
-            self.path('libapr-1.dll')
-            self.path('libaprutil-1.dll')
-            self.path('libapriconv-1.dll')
-            self.path('llcommon.dll')
-            self.end_prefix()
 
         # For textures
         if self.prefix(src="../../libraries/i686-win32/lib/release", dst=""):
@@ -502,53 +495,23 @@ class DarwinManifest(ViewerManifest):
                 self.path("vivox-runtime/universal-darwin/libvivoxsdk.dylib", "libvivoxsdk.dylib")
                 self.path("vivox-runtime/universal-darwin/SLVoice", "SLVoice")
 
-                libdir = "../../libraries/universal-darwin/lib_release"
-                dylibs = {}
-
                 # need to get the kdu dll from any of the build directories as well
-                for lib in "llkdu", "llcommon":
-                    libfile = "lib%s.dylib" % lib
-                    try:
-                        self.path(self.find_existing_file(os.path.join(os.pardir,
-                                                                       lib,
-                                                                       self.args['configuration'],
-                                                                       libfile),
-                                                          os.path.join(libdir, libfile)),
-                                  dst=libfile)
-                    except RuntimeError:
-                        print "Skipping %s" % libfile
-                        dylibs[lib] = False
-                    else:
-                        dylibs[lib] = True
-
-                for libfile in ("libapr-1.0.3.7.dylib",
-                                "libaprutil-1.0.3.8.dylib",
-                                "libexpat.0.5.0.dylib"):
-                    self.path(os.path.join(libdir, libfile), libfile)
-
+                try:
+                    self.path(self.find_existing_file('../llkdu/%s/libllkdu.dylib' % self.args['configuration'],
+                        '../../build-darwin-universal-Release/llkdu/Release/libllkdu.dylib',
+                        "../../libraries/universal-darwin/lib_release/libllkdu.dylib"),
+                        dst='libllkdu.dylib')
+                    pass
+                except:
+                    print "Skipping libllkdu.dylib"
+                    pass
+                
                 #libfmodwrapper.dylib
                 self.path(self.args['configuration'] + "/libfmodwrapper.dylib", "libfmodwrapper.dylib")
                 
                 # our apps
                 self.path("../mac_crash_logger/" + self.args['configuration'] + "/mac-crash-logger.app", "mac-crash-logger.app")
                 self.path("../mac_updater/" + self.args['configuration'] + "/mac-updater.app", "mac-updater.app")
-
-                # our apps dependencies on shared libs
-                mac_crash_logger_res_path = self.dst_path_of("mac-crash-logger.app/Contents/Resources")
-                mac_updater_res_path = self.dst_path_of("mac-updater.app/Contents/Resources")
-                for libfile in ("libllcommon.dylib",
-                                "libapr-1.0.3.7.dylib",
-                                "libaprutil-1.0.3.8.dylib",
-                                "libexpat.0.5.0.dylib"):
-                    target_lib = os.path.join('../../..', libfile)
-                    self.run_command("ln -sf %(target)r %(link)r" %
-                                     {'target': target_lib,
-                                      'link' : os.path.join(mac_crash_logger_res_path, libfile)}
-                                     )
-                    self.run_command("ln -sf %(target)r %(link)r" %
-                                     {'target': target_lib,
-                                      'link' : os.path.join(mac_updater_res_path, libfile)}
-                                     )
 
                 # plugin launcher
                 self.path("../llplugin/slplugin/" + self.args['configuration'] + "/SLPlugin", "SLPlugin")
@@ -583,12 +546,14 @@ class DarwinManifest(ViewerManifest):
 
     def app_name(self):
         mapping={"secondlife":"Second Life",
-                 "snowglobe":"Snowglobe"}
+                 "snowglobe":"Snowglobe",
+                 "Inertia":"Intertia"}
         return mapping[self.viewer_branding_id()]
         
     def info_plist_name(self):
         mapping={"secondlife":"Info-SecondLife.plist",
-                 "snowglobe":"Info-Snowglobe.plist"}
+                 "snowglobe":"Info-Snowglobe.plist",
+                 "Inertia":"Info-Inertia.plist"}
         return mapping[self.viewer_branding_id()]
 
     def package_finish(self):
@@ -722,23 +687,24 @@ class LinuxManifest(ViewerManifest):
         # Per platform MIME config on the cheap.  See SNOW-307 / DEV-41388
         self.path("skins/default/xui/en-us/mime_types_linux.xml", "skins/default/xui/en-us/mime_types.xml")
 
-        self.path("../llcommon/libllcommon.so", "lib/libllcommon.so")
-
         self.path("featuretable_linux.txt")
 
     def wrapper_name(self):
         mapping={"secondlife":"secondlife",
-                 "snowglobe":"snowglobe"}
+                 "snowglobe":"snowglobe",
+                 "Inertia":"inertia"}
         return mapping[self.viewer_branding_id()]
 
     def binary_name(self):
         mapping={"secondlife":"do-not-directly-run-secondlife-bin",
-                 "snowglobe":"snowglobe-do-not-run-directly"}
+                 "snowglobe":"snowglobe-do-not-run-directly",
+                 "Inertia":"inertia-do-not-run-directly"}
         return mapping[self.viewer_branding_id()]
     
     def icon_name(self):
         mapping={"secondlife":"secondlife_icon.png",
-                 "snowglobe":"snowglobe_icon.png"}
+                 "snowglobe":"snowglobe_icon.png",
+                 "Inertia":"inertia_icon.png"}
         return mapping[self.viewer_branding_id()]
 
     def package_finish(self):
@@ -753,6 +719,8 @@ class LinuxManifest(ViewerManifest):
                     installer_name += '_' + self.args['grid'].upper()
             else:
                 installer_name += '_' + self.channel_oneword().upper()
+
+	installer_name = 'Inertia'
 
         # Fix access permissions
         self.run_command("""
@@ -772,11 +740,13 @@ class LinuxManifest(ViewerManifest):
         try:
             # --numeric-owner hides the username of the builder for
             # security etc.
-            self.run_command("tar -C '%(dir)s' --numeric-owner -cjf "
-                             "'%(inst_path)s.tar.bz2' %(inst_name)s" % {
-                'dir': self.get_build_prefix(),
-                'inst_name': installer_name,
-                'inst_path':self.build_path_of(installer_name)})
+            # I'm leaving this disabled for speed
+            #self.run_command("tar -C '%(dir)s' --numeric-owner -cjf "
+            #                 "'%(inst_path)s.tar.bz2' %(inst_name)s" % {
+            #    'dir': self.get_build_prefix(),
+            #    'inst_name': installer_name,
+            #    'inst_path':self.build_path_of(installer_name)})
+            print ''
         finally:
             self.run_command("mv '%(inst)s' '%(dst)s'" % {
                 'dst': self.get_dst_prefix(),

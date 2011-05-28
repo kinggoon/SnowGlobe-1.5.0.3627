@@ -56,6 +56,14 @@
 			     name="Empty Trash" width="128">
 				<on_click filter="" function="Inventory.EmptyTrash" userdata="" />
 			</menu_item_call>
+			<menu_item_call bottom_delta="-18" height="18" label="Load InvCache..." left="0" mouse_opaque="true"
+			     name="Load InvCache..." width="128">
+				<on_click filter="" function="Inventory.LoadInvCache" userdata="" />
+			</menu_item_call>
+			<menu_item_call bottom_delta="-18" height="18" label="Refresh Inventory" left="0" mouse_opaque="true"
+			     name="Refresh Inventory" width="128">
+				<on_click filter="" function="Inventory.RefreshInvModel" userdata="" />
+			</menu_item_call>
 		</menu>
 		<menu bottom_delta="80" drop_shadow="true" height="121"
 		     label="Create" left="0" mouse_opaque="false" name="Create" opaque="true"
@@ -114,6 +122,14 @@
 				     mouse_opaque="true" name="New Underpants" width="125">
 					<on_click filter="" function="Inventory.DoCreate" userdata="underpants" />
 				</menu_item_call>
+				<menu_item_call bottom_delta="-18" height="18" label="New Tattoo" left="0"
+				     mouse_opaque="true" name="New Tattoo" width="125">
+					<on_click filter="" function="Inventory.DoCreate" userdata="tattoo" />
+				</menu_item_call>
+				<menu_item_call bottom_delta="-18" height="18" label="New Alpha" left="0"
+				     mouse_opaque="true" name="New Alpha" width="125">
+					<on_click filter="" function="Inventory.DoCreate" userdata="alpha" />
+				</menu_item_call>
 			</menu>
 			<menu bottom_delta="-599" drop_shadow="true" height="85" left="0"
 			     mouse_opaque="false" name="New Body Parts" opaque="true" width="118">
@@ -134,6 +150,10 @@
 					<on_click filter="" function="Inventory.DoCreate" userdata="eyes" />
 				</menu_item_call>
 			</menu>
+			<menu_item_call bottom_delta="-18" height="18" label="New Pretend Item" left="0" mouse_opaque="true"
+				     name="New Pretend Item" width="118">
+				<on_click filter="" function="Inventory.DoCreate" userdata="pretend" />
+			</menu_item_call>
 		</menu>
 		<menu bottom_delta="64" drop_shadow="true" height="49"
 		     label="Sort" left="0" mouse_opaque="false" name="Sort" opaque="true"
@@ -157,6 +177,22 @@
 			     label="System Folders To Top" left="0" mouse_opaque="true"
 			     name="System Folders To Top" width="118">
 				<on_click filter="" function="Inventory.SetSortBy" userdata="systemfolderstotop" />
+			</menu_item_check>
+		</menu>
+		<menu bottom_delta="64" drop_shadow="true" height="49"
+		     label="Search" left="0" mouse_opaque="false" name="Search" opaque="true"
+		     tear_off="true" width="118">
+			<menu_item_check bottom_delta="-18" control_name="Inventory.SearchName" height="18"
+			     label="Item name" left="0" mouse_opaque="true" name="Item name" width="118">
+				<on_click filter="" function="Inventory.SetSearchType" userdata="name" />
+			</menu_item_check>
+			<menu_item_check bottom_delta="-18" control_name="Inventory.SearchDesc" height="18"
+			     label="Item description" left="0" mouse_opaque="true" name="Item description" width="118">
+				<on_click filter="" function="Inventory.SetSearchType" userdata="description" />
+			</menu_item_check>
+			<menu_item_check bottom_delta="-18" control_name="Inventory.SearchCreator" height="18"
+			     label="Item creator" left="0" mouse_opaque="true" name="Item creatorr" width="118">
+				<on_click filter="" function="Inventory.SetSearchType" userdata="creator" />
 			</menu_item_check>
 		</menu>
 	</menu_bar>

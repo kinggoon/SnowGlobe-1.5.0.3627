@@ -76,11 +76,11 @@ class PlatformSetup(object):
     build_type = build_types['relwithdebinfo']
     standalone = 'OFF'
     unattended = 'OFF'
-    universal = 'OFF'
     project_name = 'SecondLife'
     distcc = True
     cmake_opts = []
     word_size = 32
+    opensim_rules = 'OFF' #whether or not to use rules fit for opensim
     using_express = False
 
     def __init__(self):
@@ -124,6 +124,7 @@ class PlatformSetup(object):
             standalone=self.standalone,
             unattended=self.unattended,
             word_size=self.word_size,
+            opensim_rules=self.opensim_rules,
             type=self.build_type.upper(),
             )
         #if simple:
@@ -132,6 +133,7 @@ class PlatformSetup(object):
                 '-DSTANDALONE:BOOL=%(standalone)s '
                 '-DUNATTENDED:BOOL=%(unattended)s '
                 '-DWORD_SIZE:STRING=%(word_size)s '
+                '-DOPENSIM_RULES:BOOL=%(opensim_rules)s '
                 '-G %(generator)r %(opts)s %(dir)r' % args)
 
     def run_cmake(self, args=[]):
@@ -293,6 +295,7 @@ class LinuxSetup(UnixSetup):
             type=self.build_type.upper(),
             project_name=self.project_name,
             word_size=self.word_size,
+            opensim_rules=self.opensim_rules,
             )
         if not self.is_internal_tree():
             args.update({'cxx':'g++', 'server':'OFF', 'viewer':'ON'})
@@ -319,6 +322,7 @@ class LinuxSetup(UnixSetup):
                 '-DVIEWER:BOOL=%(viewer)s -DSTANDALONE:BOOL=%(standalone)s '
                 '-DUNATTENDED:BOOL=%(unattended)s '
                 '-DWORD_SIZE:STRING=%(word_size)s '
+                '-DOPENSIM_RULES:BOOL=%(opensim_rules)s '
                 '-DROOT_PROJECT_NAME:STRING=%(project_name)s '
                 '%(opts)s %(dir)r')
                % args)
@@ -417,7 +421,7 @@ class DarwinSetup(UnixSetup):
         return 'darwin'
 
     def arch(self):
-        if self.universal == 'ON':
+        if self.unattended == 'ON':
             return 'universal'
         else:
             return UnixSetup.arch(self)
@@ -431,10 +435,11 @@ class DarwinSetup(UnixSetup):
             word_size=self.word_size,
             unattended=self.unattended,
             project_name=self.project_name,
-            universal=self.universal,
+            universal='',
+            opensim_rules=self.opensim_rules,
             type=self.build_type.upper(),
             )
-        if self.universal == 'ON':
+        if self.unattended == 'ON':
             args['universal'] = '-DCMAKE_OSX_ARCHITECTURES:STRING=\'i386;ppc\''
         #if simple:
         #    return 'cmake %(opts)s %(dir)r' % args
@@ -443,6 +448,7 @@ class DarwinSetup(UnixSetup):
                 '-DSTANDALONE:BOOL=%(standalone)s '
                 '-DUNATTENDED:BOOL=%(unattended)s '
                 '-DWORD_SIZE:STRING=%(word_size)s '
+                '-DOPENSIM_RULES:BOOL=%(opensim_rules)s '
                 '-DROOT_PROJECT_NAME:STRING=%(project_name)s '
                 '%(universal)s '
                 '%(opts)s %(dir)r' % args)
@@ -498,17 +504,17 @@ class WindowsSetup(PlatformSetup):
                     self._generator = version
                     print 'Building with ', self.gens[version]['gen']
                     break
-                else:
-                    print >> sys.stderr, 'Cannot find a Visual Studio installation, testing for express editions'
-                    for version in 'vc80 vc90 vc71'.split():
-                        if self.find_visual_studio_express(version):
-                            self._generator = version
-                            self.using_express = True
-                            print 'Building with ', self.gens[version]['gen'] , "Express edition"
-                            break
-                        else:
-                            print >> sys.stderr, 'Cannot find any Visual Studio installation'
-                            sys.exit(1)
+            else:
+                print >> sys.stderr, 'Cannot find a Visual Studio installation, testing for express editions'
+                for version in 'vc80 vc90 vc71'.split():
+                    if self.find_visual_studio_express(version):
+                        self._generator = version
+                        self.using_express = True
+                        print 'Building with ', self.gens[version]['gen'] , "Express edition"
+                        break
+                    else:
+                        print >> sys.stderr, 'Cannot find any Visual Studio installation'
+                        sys.exit(1)
         return self._generator
 
     def _set_generator(self, gen):
@@ -531,6 +537,7 @@ class WindowsSetup(PlatformSetup):
             unattended=self.unattended,
             project_name=self.project_name,
             word_size=self.word_size,
+            opensim_rules=self.opensim_rules,
             )
         #if simple:
         #    return 'cmake %(opts)s "%(dir)s"' % args
@@ -538,6 +545,7 @@ class WindowsSetup(PlatformSetup):
                 '-DSTANDALONE:BOOL=%(standalone)s '
                 '-DUNATTENDED:BOOL=%(unattended)s '
                 '-DWORD_SIZE:STRING=%(word_size)s '
+                '-DOPENSIM_RULES:BOOL=%(opensim_rules)s '
                 '-DROOT_PROJECT_NAME:STRING=%(project_name)s '
                 '%(opts)s "%(dir)s"' % args)
 
@@ -689,6 +697,7 @@ class CygwinSetup(WindowsSetup):
             unattended=self.unattended,
             project_name=self.project_name,
             word_size=self.word_size,
+            opensim_rules=self.opensim_rules,
             )
         #if simple:
         #    return 'cmake %(opts)s "%(dir)s"' % args
@@ -696,6 +705,7 @@ class CygwinSetup(WindowsSetup):
                 '-DUNATTENDED:BOOl=%(unattended)s '
                 '-DSTANDALONE:BOOL=%(standalone)s '
                 '-DWORD_SIZE:STRING=%(word_size)s '
+                '-DOPENSIM_RULES:BOOL=%(opensim_rules)s '
                 '-DROOT_PROJECT_NAME:STRING=%(project_name)s '
                 '%(opts)s "%(dir)s"' % args)
 
@@ -715,7 +725,6 @@ Options:
        --standalone     build standalone, without Linden prebuild libraries
        --unattended     build unattended, do not invoke any tools requiring
                         a human response
-       --universal      build a universal binary on Mac OS X (unsupported)
   -t | --type=NAME      build type ("Debug", "Release", or "RelWithDebInfo")
   -m32 | -m64           build architecture (32-bit or 64-bit)
   -N | --no-distcc      disable use of distcc
@@ -727,10 +736,9 @@ Options:
   -p | --project=NAME   set the root project name. (Doesn't effect makefiles)
                         
 Commands:
-  build           configure and build default target
-  clean           delete all build directories, does not affect sources
-  configure       configure project by running cmake (default if none given)
-  printbuilddirs  print the build directory that will be used
+  build      configure and build default target
+  clean      delete all build directories, does not affect sources
+  configure  configure project by running cmake (default command if none given)
 
 Command-options for "configure":
   We use cmake variables to change the build configuration.
@@ -748,6 +756,15 @@ Examples:
 '''
 
 def main(arguments):
+    if os.getenv('DISTCC_DIR') is None:
+        distcc_dir = os.path.join(getcwd(), '.distcc')
+        if not os.path.exists(distcc_dir):
+            os.mkdir(distcc_dir)
+        print "setting DISTCC_DIR to %s" % distcc_dir
+        os.environ['DISTCC_DIR'] = distcc_dir
+    else:
+        print "DISTCC_DIR is set to %s" % os.getenv('DISTCC_DIR')
+ 
     setup = setup_platform[sys.platform]()
     try:
         opts, args = getopt.getopt(
@@ -807,14 +824,6 @@ For example: develop.py configure -DSERVER:BOOL=OFF"""
         if cmd in ('cmake', 'configure'):
             setup.run_cmake(args)
         elif cmd == 'build':
-            if os.getenv('DISTCC_DIR') is None:
-                distcc_dir = os.path.join(getcwd(), '.distcc')
-                if not os.path.exists(distcc_dir):
-                    os.mkdir(distcc_dir)
-                print "setting DISTCC_DIR to %s" % distcc_dir
-                os.environ['DISTCC_DIR'] = distcc_dir
-            else:
-                print "DISTCC_DIR is set to %s" % os.getenv('DISTCC_DIR')
             for d in setup.build_dirs():
                 if not os.path.exists(d):
                     raise CommandError('run "develop.py cmake" first')
@@ -825,9 +834,6 @@ For example: develop.py configure -DSERVER:BOOL=OFF"""
             if args:
                 raise CommandError('clean takes no arguments')
             setup.cleanup()
-        elif cmd == 'printbuilddirs':
-            for d in setup.build_dirs():
-                print >> sys.stdout, d
         else:
             print >> sys.stderr, 'Error: unknown subcommand', repr(cmd)
             print >> sys.stderr, "(run 'develop.py --help' for help)"

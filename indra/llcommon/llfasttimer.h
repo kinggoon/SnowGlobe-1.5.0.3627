@@ -35,9 +35,9 @@
 
 #define FAST_TIMER_ON 1
 
-LL_COMMON_API U64 get_cpu_clock_count();
+U64 get_cpu_clock_count();
 
-class LL_COMMON_API LLFastTimer
+class LLFastTimer
 {
 public:
 	enum EFastTimerType

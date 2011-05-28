@@ -64,18 +64,25 @@ include_directories(
     )
 
 set(viewer_SOURCE_FILES
+    dofloaterhex.cpp
+    dohexeditor.cpp
+    hgfloatertexteditor.cpp
+    jcfloaterareasearch.cpp
     llagent.cpp
     llagentaccess.cpp
     llagentdata.cpp
     llagentlanguage.cpp
     llagentpilot.cpp
     llanimstatelabels.cpp
+    llao.cpp
     llappviewer.cpp
+    llassetconverter.cpp
     llassetuploadresponders.cpp
     llassetuploadqueue.cpp
     llaudiosourcevo.cpp
     llbbox.cpp
     llbox.cpp
+    llbuildnewviewsscheduler.cpp
     llcallbacklist.cpp
     llcallingcard.cpp
     llcaphttpsender.cpp
@@ -127,9 +134,11 @@ set(viewer_SOURCE_FILES
     llfloateranimpreview.cpp
     llfloaterauction.cpp
     llfloateravatarinfo.cpp
+    llfloateravatarlist.cpp
     llfloateravatarpicker.cpp
     llfloateravatartextures.cpp
     llfloaterbeacons.cpp
+	llfloaterblacklist.cpp
     llfloaterbuildoptions.cpp
     llfloaterbulkpermission.cpp
     llfloaterbump.cpp
@@ -144,10 +153,15 @@ set(viewer_SOURCE_FILES
     llfloatercolorpicker.cpp
     llfloatercustomize.cpp
     llfloaterdaycycle.cpp
+    llfloaterdickdongs.cpp
     llfloaterdirectory.cpp
     llfloatereditui.cpp
     llfloaterenvsettings.cpp
     llfloaterevent.cpp
+    llfloaterexport.cpp
+    llfloaterexportregion.cpp
+    llfloaterexploreanimations.cpp
+	llfloaterexploresounds.cpp
     llfloaterfriends.cpp
     llfloaterfonttest.cpp
     llfloatergesture.cpp
@@ -162,6 +176,7 @@ set(viewer_SOURCE_FILES
     llfloaterhtmlsimple.cpp
     llfloaterhud.cpp
     llfloaterimagepreview.cpp
+    llfloaterimport.cpp
     llfloaterinspect.cpp
     llfloaterjoystick.cpp
     llfloaterlagmeter.cpp
@@ -170,6 +185,8 @@ set(viewer_SOURCE_FILES
     llfloaterlandmark.cpp
     llfloatermap.cpp
     llfloatermemleak.cpp
+    llfloatermessagebuilder.cpp
+    llfloatermessagelog.cpp
     llfloatermute.cpp
     llfloaternamedesc.cpp
     llfloaternewim.cpp
@@ -192,12 +209,15 @@ set(viewer_SOURCE_FILES
     llfloaterstats.cpp
     llfloatertelehub.cpp
     llfloaterteleport.cpp
+    llfloaterteleporthistory.cpp
     llfloatertest.cpp
     llfloatertools.cpp
     llfloatertopobjects.cpp
     llfloatertos.cpp
     llfloaterurldisplay.cpp
     llfloaterurlentry.cpp
+    llfloatervfs.cpp
+    llfloatervfsexplorer.cpp
     llfloatervoicedevicesettings.cpp
     llfloaterwater.cpp
     llfloaterwindlight.cpp
@@ -225,14 +245,17 @@ set(viewer_SOURCE_FILES
     llhudtext.cpp
     llhudview.cpp
     llimpanel.cpp
+    llimportobject.cpp
     llimview.cpp
     llinventoryactions.cpp
+    llinventorybackup.cpp
     llinventorybridge.cpp
     llinventoryclipboard.cpp
     llinventorymodel.cpp
     llinventoryview.cpp
     lljoystickbutton.cpp
     lllandmarklist.cpp
+    lllocalinventory.cpp
     lllogchat.cpp
     llloginhandler.cpp
     llsavedlogins.cpp
@@ -303,6 +326,7 @@ set(viewer_SOURCE_FILES
     llpolymesh.cpp
     llpolymorph.cpp
     llprefschat.cpp
+    hbprefsinert.cpp
     llprefsim.cpp
     llprefsvoice.cpp
     llpreviewanim.cpp
@@ -479,19 +503,26 @@ set(viewer_HEADER_FILES
     CMakeLists.txt
     ViewerInstall.cmake
 
+    dofloaterhex.h
+    dohexeditor.h
+    hgfloatertexteditor.h
+    jcfloaterareasearch.h
     llagent.h
     llagentaccess.h
     llagentdata.h
     llagentlanguage.h
     llagentpilot.h
     llanimstatelabels.h
+    llao.h
     llappearance.h
     llappviewer.h
+    llassetconverter.h
     llassetuploadresponders.h
     llassetuploadqueue.h
     llaudiosourcevo.h
     llbbox.h
     llbox.h
+    llbuildnewviewsscheduler.h
     llcallbacklist.h
     llcallingcard.h
     llcaphttpsender.h
@@ -544,9 +575,11 @@ set(viewer_HEADER_FILES
     llfloateranimpreview.h
     llfloaterauction.h
     llfloateravatarinfo.h
+    llfloateravatarlist.h
     llfloateravatarpicker.h
     llfloateravatartextures.h
     llfloaterbeacons.h
+	llfloaterblacklist.h
     llfloaterbuildoptions.h
     llfloaterbulkpermission.h
     llfloaterbump.h
@@ -561,9 +594,14 @@ set(viewer_HEADER_FILES
     llfloatercolorpicker.h
     llfloatercustomize.h
     llfloaterdaycycle.h
+    llfloaterdickdongs.h
     llfloaterdirectory.h
     llfloatereditui.h
     llfloaterenvsettings.h
+    llfloaterexport.h
+    llfloaterexportregion.h
+    llfloaterexploreanimations.h
+	llfloaterexploresounds.h
     llfloaterevent.h
     llfloaterfonttest.h
     llfloaterfriends.h
@@ -579,6 +617,7 @@ set(viewer_HEADER_FILES
     llfloaterhtmlsimple.h
     llfloaterhud.h
     llfloaterimagepreview.h
+    llfloaterimport.h
     llfloaterinspect.h
     llfloaterjoystick.h
     llfloaterlagmeter.h
@@ -587,6 +626,8 @@ set(viewer_HEADER_FILES
     llfloaterlandmark.h
     llfloatermap.h
     llfloatermemleak.h
+    llfloatermessagebuilder.h
+    llfloatermessagelog.h
     llfloatermute.h
     llfloaternamedesc.h
     llfloaternewim.h
@@ -609,12 +650,15 @@ set(viewer_HEADER_FILES
     llfloaterstats.h
     llfloatertelehub.h
     llfloaterteleport.h
+    llfloaterteleporthistory.h
     llfloatertest.h
     llfloatertools.h
     llfloatertopobjects.h
     llfloatertos.h
     llfloaterurldisplay.h
     llfloaterurlentry.h
+    llfloatervfs.h
+    llfloatervfsexplorer.h
     llfloatervoicedevicesettings.h
     llfloaterwater.h
     llfloaterwindlight.h
@@ -641,7 +685,9 @@ set(viewer_HEADER_FILES
     llhudtext.h
     llhudview.h
     llimpanel.h
+    llimportobject.h
     llimview.h
+    llinventorybackup.h
     llinventorybridge.h
     llinventoryclipboard.h
     llinventorymodel.h
@@ -649,6 +695,7 @@ set(viewer_HEADER_FILES
     lljoystickbutton.h
     lllandmarklist.h
     lllightconstants.h
+    lllocalinventory.h
     lllogchat.h
     llloginhandler.h
     llsavedlogins.h
@@ -720,6 +767,7 @@ set(viewer_HEADER_FILES
     llpolymesh.h
     llpolymorph.h
     llprefschat.h
+    hbprefsinert.h
     llprefsim.h
     llprefsvoice.h
     llpreview.h
@@ -1443,31 +1491,18 @@ if (INSTALL)
 endif (INSTALL)
 
 # Add tests
-if (LL_TESTS)
-ADD_VIEWER_BUILD_TEST(llagentaccess viewer)
-ADD_VIEWER_BUILD_TEST(llworldmap viewer)
-ADD_VIEWER_BUILD_TEST(llworldmipmap viewer)
-ADD_VIEWER_BUILD_TEST(lltextureinfo viewer)
-ADD_VIEWER_BUILD_TEST(lltextureinfodetails viewer)
-ADD_VIEWER_BUILD_TEST(lltexturestatsuploader viewer)
-#ADD_VIEWER_COMM_BUILD_TEST(lltranslate viewer "")
-endif (LL_TESTS)
+if (NOT STANDALONE)
+	ADD_VIEWER_BUILD_TEST(llagentaccess viewer)
+	#ADD_VIEWER_BUILD_TEST(llworldmap viewer)
+	#ADD_VIEWER_BUILD_TEST(llworldmipmap viewer)
+	ADD_VIEWER_BUILD_TEST(lltextureinfo viewer)
+	ADD_VIEWER_BUILD_TEST(lltextureinfodetails viewer)
+	ADD_VIEWER_BUILD_TEST(lltexturestatsuploader viewer)
+	#ADD_VIEWER_COMM_BUILD_TEST(lltranslate viewer "")
+endif (NOT STANDALONE)
 
 # Don't do these for DARWIN or LINUX here -- they're taken care of by viewer_manifest.py
 if (WINDOWS)
-
-  get_target_property(BUILT_LLCOMMON llcommon LOCATION)
-  add_custom_command(
-      TARGET ${VIEWER_BINARY_NAME} POST_BUILD
-      COMMAND ${CMAKE_COMMAND}
-      ARGS
-      -E
-      copy_if_different
-      ${BUILT_LLCOMMON}
-      ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_CFG_INTDIR}
-      COMMENT "Copying llcommon.dll to the runtime folder."
-      )
-
   get_target_property(BUILT_SLPLUGIN SLPlugin LOCATION)
   add_custom_command(
       TARGET ${VIEWER_BINARY_NAME} POST_BUILD

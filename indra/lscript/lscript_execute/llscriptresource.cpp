@@ -30,7 +30,6 @@
  * $/LicenseInfo$
  */
 
-#include "linden_common.h"
 #include "llscriptresource.h"
 #include "llerror.h"
 

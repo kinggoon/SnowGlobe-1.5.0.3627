@@ -47,7 +47,7 @@
 // Note: ~LLQueuedThread is O(N) N=# of queued threads, assumed to be small
 //   It is assumed that LLQueuedThreads are rarely created/destroyed.
 
-class LL_COMMON_API LLQueuedThread : public LLThread
+class LLQueuedThread : public LLThread
 {
 	//------------------------------------------------------------------------
 public:
@@ -80,7 +80,7 @@ public:
 	//------------------------------------------------------------------------
 public:
 
-	class LL_COMMON_API QueuedRequest : public LLSimpleHashEntry<handle_t>
+	class QueuedRequest : public LLSimpleHashEntry<handle_t>
 	{
 		friend class LLQueuedThread;
 		

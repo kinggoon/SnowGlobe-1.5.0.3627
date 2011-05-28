@@ -38,7 +38,7 @@
 #include "lltimer.h"
 #include "llfile.h"
 
-class LL_COMMON_API LLCommon
+class LLCommon
 {
 public:
 	static void initClass();

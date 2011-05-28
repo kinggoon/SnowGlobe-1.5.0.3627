@@ -42,7 +42,6 @@
 #include "llrender.h"
 #include "v4color.h"
 #include "llstl.h"
-#include "llfasttimer.h"
 
 const S32 BOLD_OFFSET = 1;
 

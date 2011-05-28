@@ -136,7 +136,10 @@
 #include "llappviewer.h"
 #include "llviewerjoystick.h"
 #include "llfollowcam.h"
-
+// <edit>
+#include "llao.h"
+#include "llworldmapmessage.h"
+// </edit>
 using namespace LLVOAvatarDefines;
 
 extern LLMenuBarGL* gMenuBarView;
@@ -215,10 +218,27 @@ const F64 CHAT_AGE_FAST_RATE = 3.0;
 
 // The agent instance.
 LLAgent gAgent;
-
+// <edit>
+LLUUID gReSitTargetID;
+LLVector3 gReSitOffset;
+// </edit>
 //
 // Statics
 //
+
+// <edit>
+// For MapBlockReply funk 'cause I dunno what I'm doing
+BOOL LLAgent::lure_show = FALSE;
+std::string LLAgent::lure_name;
+LLVector3d LLAgent::lure_posglobal;
+U16 LLAgent::lure_global_x;
+U16 LLAgent::lure_global_y;
+int LLAgent::lure_x;
+int LLAgent::lure_y;
+int LLAgent::lure_z;
+std::string LLAgent::lure_maturity;
+
+// </edit>
 
 const F32 LLAgent::TYPING_TIMEOUT_SECS = 5.f;
 
@@ -758,6 +778,10 @@ void LLAgent::movePitch(S32 direction)
 BOOL LLAgent::canFly()
 {
 	if (isGodlike()) return TRUE;
+
+	// <edit>
+	if(gSavedSettings.getBOOL("AlwaysAllowFly")) return TRUE;
+	// </edit>
 
 	LLViewerRegion* regionp = getRegion();
 	if (regionp && regionp->getBlockFly()) return FALSE;
@@ -1867,7 +1891,9 @@ void LLAgent::cameraZoomIn(const F32 fraction)
 
 	if (new_distance > max_distance)
 	{
-		new_distance = max_distance;
+		// <edit> screw cam constraints
+		//new_distance = max_distance;
+		// </edit>
 
 		/*
 		// Unless camera is unlocked
@@ -3011,7 +3037,9 @@ void LLAgent::endAnimationUpdateUI()
 		// freeze avatar
 		if (mAvatarObject.notNull())
 		{
-			mPauseRequest = mAvatarObject->requestPause();
+			// <edit>
+			//mPauseRequest = mAvatarObject->requestPause();
+			// </edit>
 		}
 	}
 
@@ -4222,7 +4250,9 @@ void LLAgent::changeCameraToCustomizeAvatar(BOOL avatar_animate, BOOL camera_ani
 		return;
 	}
 
-	setControlFlags(AGENT_CONTROL_STAND_UP); // force stand up
+	// <edit>
+	//setControlFlags(AGENT_CONTROL_STAND_UP); // force stand up
+	// </edit>
 	gViewerWindow->getWindow()->resetBusyCount();
 
 	if (gFaceEditToolset)
@@ -4237,6 +4267,9 @@ void LLAgent::changeCameraToCustomizeAvatar(BOOL avatar_animate, BOOL camera_ani
 
 	if (camera_animate)
 	{
+		// <edit>
+		if(gSavedSettings.getBOOL("AppearanceCameraMovement"))
+		// </edit>
 		startCameraAnimation();
 	}
 
@@ -4295,6 +4328,14 @@ void LLAgent::changeCameraToCustomizeAvatar(BOOL avatar_animate, BOOL camera_ani
 	}
 	else
 	{
+		mCameraAnimating = FALSE;
+		endAnimationUpdateUI();
+	}
+
+	// <edit>
+	if(!gSavedSettings.getBOOL("AppearanceCameraMovement"))
+	{
+		//hmm
 		mCameraAnimating = FALSE;
 		endAnimationUpdateUI();
 	}
@@ -4684,6 +4725,116 @@ void LLAgent::lookAtLastChat()
 	}
 }
 
+void LLAgent::lookAtObject(LLUUID object_id, ECameraPosition camera_pos)
+{
+	// Block if camera is animating or not in normal third person camera mode
+	if (mCameraAnimating || !cameraThirdPerson())
+	{
+		return;
+	}
+
+	LLViewerObject *chatter = gObjectList.findObject(object_id);
+	if (chatter)
+	{
+		LLVector3 delta_pos;
+		if (chatter->isAvatar())
+		{
+			LLVOAvatar *chatter_av = (LLVOAvatar*)chatter;
+			if (!mAvatarObject.isNull() && chatter_av->mHeadp)
+			{
+				delta_pos = chatter_av->mHeadp->getWorldPosition() - mAvatarObject->mHeadp->getWorldPosition();
+			}
+			else
+			{
+				delta_pos = chatter->getPositionAgent() - getPositionAgent();
+			}
+			delta_pos.normVec();
+
+			setControlFlags(AGENT_CONTROL_STOP);
+
+			changeCameraToThirdPerson();
+
+			LLVector3 new_camera_pos = mAvatarObject->mHeadp->getWorldPosition();
+			LLVector3 left = delta_pos % LLVector3::z_axis;
+			left.normVec();
+			LLVector3 up = left % delta_pos;
+			up.normVec();
+			new_camera_pos -= delta_pos * 0.4f;
+			new_camera_pos += left * 0.3f;
+			new_camera_pos += up * 0.2f;
+
+			F32 radius = chatter_av->getVObjRadius();
+			LLVector3d view_dist(radius, radius, 0.0f);
+
+			if (chatter_av->mHeadp)
+			{
+				setFocusGlobal(getPosGlobalFromAgent(chatter_av->mHeadp->getWorldPosition()), object_id);
+				mCameraFocusOffsetTarget = getPosGlobalFromAgent(new_camera_pos) - gAgent.getPosGlobalFromAgent(chatter_av->mHeadp->getWorldPosition());
+
+				switch(camera_pos)
+				{
+					case CAMERA_POSITION_SELF:
+						mCameraFocusOffsetTarget = getPosGlobalFromAgent(new_camera_pos) - gAgent.getPosGlobalFromAgent(chatter_av->mHeadp->getWorldPosition());
+						break;
+					case CAMERA_POSITION_OBJECT:
+						mCameraFocusOffsetTarget =  view_dist;
+						break;
+				}
+			}
+			else
+			{
+				setFocusGlobal(chatter->getPositionGlobal(), object_id);
+				mCameraFocusOffsetTarget = getPosGlobalFromAgent(new_camera_pos) - chatter->getPositionGlobal();
+
+				switch(camera_pos)
+				{
+					case CAMERA_POSITION_SELF:
+						mCameraFocusOffsetTarget = getPosGlobalFromAgent(new_camera_pos) - chatter->getPositionGlobal();
+						break;
+					case CAMERA_POSITION_OBJECT:
+						mCameraFocusOffsetTarget = view_dist;
+						break;
+				}
+			}
+			setFocusOnAvatar(FALSE, TRUE);
+		}
+		else
+		{
+			delta_pos = chatter->getRenderPosition() - getPositionAgent();
+			delta_pos.normVec();
+
+			setControlFlags(AGENT_CONTROL_STOP);
+
+			changeCameraToThirdPerson();
+
+			LLVector3 new_camera_pos = mAvatarObject->mHeadp->getWorldPosition();
+			LLVector3 left = delta_pos % LLVector3::z_axis;
+			left.normVec();
+			LLVector3 up = left % delta_pos;
+			up.normVec();
+			new_camera_pos -= delta_pos * 0.4f;
+			new_camera_pos += left * 0.3f;
+			new_camera_pos += up * 0.2f;
+
+			setFocusGlobal(chatter->getPositionGlobal(), object_id);
+
+			switch(camera_pos)
+			{
+				case CAMERA_POSITION_SELF:
+					mCameraFocusOffsetTarget = getPosGlobalFromAgent(new_camera_pos) - chatter->getPositionGlobal();
+					break;
+				case CAMERA_POSITION_OBJECT:
+					F32 radius = chatter->getVObjRadius();
+					LLVector3d view_dist(radius, radius, 0.0f);
+					mCameraFocusOffsetTarget = view_dist;
+					break;
+			}
+
+			setFocusOnAvatar(FALSE, TRUE);
+		}
+	}
+}
+
 const F32 SIT_POINT_EXTENTS = 0.2f;
 
 void LLAgent::setStartPosition( U32 location_id )
@@ -4805,8 +4956,19 @@ void LLAgent::requestStopMotion( LLMotion* motion )
 void LLAgent::onAnimStop(const LLUUID& id)
 {
 	// handle automatic state transitions (based on completion of animation playback)
-	if (id == ANIM_AGENT_STAND)
+	if(id == ANIM_AGENT_STAND
+		// <edit>
+		// I really do not like doing this
+		|| id == ANIM_AGENT_STAND_1
+		|| id == ANIM_AGENT_STAND_2
+		|| id == ANIM_AGENT_STAND_3
+		|| id == ANIM_AGENT_STAND_4)
+		// </edit>
 	{
+		// <edit>
+		if(LLAO::isEnabled())
+			LLAO::mTimer->pause();//Timer only pauses if its not paused, check is inside function.
+		// </edit>
 		stopFidget();
 	}
 	else if (id == ANIM_AGENT_AWAY)
@@ -5473,7 +5635,7 @@ class LLAgentDropGroupViewerNode : public LLHTTPNode
 			!input.has("body") )
 		{
 			//what to do with badly formed message?
-			response->statusUnknownError(400);
+			response->status(400);
 			response->result(LLSD("Invalid message parameters"));
 		}
 
@@ -5546,7 +5708,7 @@ class LLAgentDropGroupViewerNode : public LLHTTPNode
 		else
 		{
 			//what to do with badly formed message?
-			response->statusUnknownError(400);
+			response->status(400);
 			response->result(LLSD("Invalid message parameters"));
 		}
 	}
@@ -5962,7 +6124,10 @@ bool LLAgent::teleportCore(bool is_local)
 	if(TELEPORT_NONE != mTeleportState)
 	{
 		llwarns << "Attempt to teleport when already teleporting." << llendl;
-		return false;
+		// <edit>
+		//return false;
+		teleportCancel();
+		// </edit>
 	}
 
 #if 0
@@ -6000,6 +6165,9 @@ bool LLAgent::teleportCore(bool is_local)
 
 	// Close all pie menus, deselect land, etc.
 	// Don't change the camera until we know teleport succeeded. JC
+	// <edit>
+	if(gAgent.getFocusOnAvatar())
+	// </edit>
 	resetView(FALSE);
 
 	// local logic
@@ -6015,9 +6183,20 @@ bool LLAgent::teleportCore(bool is_local)
 
 		//release geometry from old location
 		gPipeline.resetVertexBuffers();
+
+		if (gSavedSettings.getBOOL("SpeedRez"))
+		{
+			F32 draw_distance = gSavedSettings.getF32("RenderFarClip");
+			if (gSavedDrawDistance < draw_distance)
+			{
+				gSavedDrawDistance = draw_distance;
+			}
+			gSavedSettings.setF32("SavedRenderFarClip", gSavedDrawDistance);
+			gSavedSettings.setF32("RenderFarClip", 32.0f);
+		}
+		make_ui_sound("UISndTeleportOut");
 	}
-	make_ui_sound("UISndTeleportOut");
-	
+
 	// MBW -- Let the voice client know a teleport has begun so it can leave the existing channel.
 	// This was breaking the case of teleporting within a single sim.  Backing it out for now.
 //	gVoiceClient->leaveChannel();
@@ -6044,11 +6223,14 @@ void LLAgent::teleportRequest(
 		msg->nextBlockFast(_PREHASH_Info);
 		msg->addU64("RegionHandle", region_handle);
 		msg->addVector3("Position", pos_local);
-		LLVector3 look_at(0,1,0);
-		if (look_at_from_camera)
+		// <edit>
+		//LLVector3 look_at(0,1,0);
+		LLVector3 look_at = LLViewerCamera::getInstance()->getAtAxis();
+		/*if (look_at_from_camera)
 		{
 			look_at = LLViewerCamera::getInstance()->getAtAxis();
-		}
+		}*/
+		// </edit>
 		msg->addVector3("LookAt", look_at);
 		sendReliableMessage();
 	}
@@ -6155,7 +6337,11 @@ void LLAgent::teleportViaLocation(const LLVector3d& pos_global)
 		msg->addU64Fast(_PREHASH_RegionHandle, region_handle);
 		msg->addVector3Fast(_PREHASH_Position, pos);
 		pos.mV[VX] += 1;
-		msg->addVector3Fast(_PREHASH_LookAt, pos);
+		// <edit>
+		LLVector3 lookat = LLViewerCamera::getInstance()->getAtAxis();
+		//msg->addVector3Fast(_PREHASH_LookAt, pos);
+		msg->addVector3Fast(_PREHASH_LookAt, lookat);
+		// </edit>
 		sendReliableMessage();
 	}
 }
@@ -6239,8 +6425,12 @@ void LLAgent::fidget()
 
 			if (mCurrentFidget != oldFidget)
 			{
-				LLAgent::stopFidget();
-
+				//LLAgent::stopFidget();
+				// <edit>
+				// for the sack of smaller packets, make this cancel the last one only
+				if(oldFidget != 0)
+					sendAnimationRequest(AGENT_STAND_ANIMS[oldFidget],ANIM_REQUEST_STOP);
+				// </edit>
 				
 				switch(mCurrentFidget)
 				{
@@ -6982,7 +7172,9 @@ void LLAgent::createStandardWearables(BOOL female)
 		FALSE, //WT_GLOVES
 		TRUE,  //WT_UNDERSHIRT
 		TRUE,  //WT_UNDERPANTS
-		FALSE  //WT_SKIRT
+		FALSE, //WT_SKIRT
+		FALSE, //WT_ALPHA
+		FALSE  //WT_TATTOO
 	};
 
 	for( S32 i=0; i < WT_COUNT; i++ )
@@ -7472,6 +7664,8 @@ void LLAgent::setWearableOutfit(
 	wearables_to_remove[WT_UNDERSHIRT]	= (!gAgent.isTeen()) & remove;
 	wearables_to_remove[WT_UNDERPANTS]	= (!gAgent.isTeen()) & remove;
 	wearables_to_remove[WT_SKIRT]		= remove;
+	wearables_to_remove[WT_ALPHA]		= remove;
+	wearables_to_remove[WT_TATTOO]		= remove;
 
 	S32 count = wearables.count();
 	llassert( items.count() == count );
@@ -7741,6 +7935,8 @@ void LLAgent::userRemoveAllClothesStep2( BOOL proceed, void* userdata )
 		gAgent.removeWearable( WT_UNDERSHIRT );
 		gAgent.removeWearable( WT_UNDERPANTS );
 		gAgent.removeWearable( WT_SKIRT );
+		gAgent.removeWearable( WT_ALPHA );
+		gAgent.removeWearable( WT_TATTOO );
 	}
 }
 
@@ -7871,5 +8067,60 @@ std::string LLAgent::getCapability(const std::string& name) const
 	}
 	return iter->second;
 }
+// <edit>
+
+void LLAgent::showLureDestination(const std::string fromname, const int global_x, const int global_y, const int x, const int y, const int z, const std::string maturity)
+{
+	const LLVector3d posglobal = LLVector3d(F64(global_x), F64(global_y), F64(0));
+	LLSimInfo* siminfo;
+	siminfo = LLWorldMap::getInstance()->simInfoFromPosGlobal(posglobal);
+	if(siminfo)
+	{
+		llinfos << fromname << "'s teleport lure is to " << siminfo->getName() << " (" << maturity << ")" << llendl;
+		std::string url = LLURLDispatcher::buildSLURL(siminfo->getName(), S32(x), S32(y), S32(z));
+		std::string msg;
+		msg = llformat("%s's teleport lure is to %s", fromname.c_str(), url.c_str());
+		if(maturity != "")
+			msg.append(llformat(" (%s)", maturity.c_str()));
+		LLChat chat(msg);
+		LLFloaterChat::addChat(chat);
+	}
+	else
+	{
+		LLAgent::lure_show = TRUE;
+		LLAgent::lure_name = fromname;
+		LLAgent::lure_posglobal = posglobal;
+		LLAgent::lure_global_x = U16(global_x / 256);
+		LLAgent::lure_global_y = U16(global_y / 256);
+		LLAgent::lure_x = x;
+		LLAgent::lure_y = y;
+		LLAgent::lure_z = z;
+		LLAgent::lure_maturity = maturity;
+		LLWorldMapMessage::getInstance()->sendMapBlockRequest(lure_global_x, lure_global_y, lure_global_x, lure_global_y, true);
+	}
+}
+
+void LLAgent::onFoundLureDestination()
+{
+	LLAgent::lure_show = FALSE;
+	LLSimInfo* siminfo;
+	siminfo = LLWorldMap::getInstance()->simInfoFromPosGlobal(LLAgent::lure_posglobal);
+	if(siminfo)
+	{
+		llinfos << LLAgent::lure_name << "'s teleport lure is to " << siminfo->getName() << " (" << LLAgent::lure_maturity << ")" << llendl;
+		std::string url = LLURLDispatcher::buildSLURL(siminfo->getName(), S32(LLAgent::lure_x), S32(LLAgent::lure_y), S32(LLAgent::lure_z));
+		std::string msg;
+		msg = llformat("%s's teleport lure is to %s", LLAgent::lure_name.c_str(), url.c_str());
+		if(LLAgent::lure_maturity != "")
+			msg.append(llformat(" (%s)", LLAgent::lure_maturity.c_str()));
+		LLChat chat(msg);
+		LLFloaterChat::addChat(chat);
+	}
+	else
+		llwarns << "Grand scheme failed" << llendl;
+}
+
+// </edit>
+
 // EOF
 

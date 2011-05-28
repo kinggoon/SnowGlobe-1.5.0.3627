@@ -82,6 +82,12 @@ typedef enum e_camera_modes
 	CAMERA_MODE_FOLLOW
 } ECameraMode;
 
+typedef enum e_camera_position
+{
+	CAMERA_POSITION_SELF, /** Camera positioned at our position */
+	CAMERA_POSITION_OBJECT /** Camera positioned at observed object's position */
+} ECameraPosition;
+
 typedef enum e_anim_request
 {
 	ANIM_REQUEST_START,
@@ -208,6 +214,7 @@ public:
 
 	void			heardChat(const LLUUID& id);
 	void			lookAtLastChat();
+	void			lookAtObject(LLUUID avatar_id, ECameraPosition camera_pos);
 	F32				getTypingTime() { return mTypingTimer.getElapsedTimeF32(); }
 
 	void			setAFK();
@@ -768,6 +775,18 @@ public:
 
 	BOOL			mInitialized;
 
+	// <edit>
+	static BOOL lure_show;
+	static std::string lure_name;
+	static LLVector3d lure_posglobal;
+	static U16 lure_global_x;
+	static U16 lure_global_y;
+	static int lure_x;
+	static int lure_y;
+	static int lure_z;
+	static std::string lure_maturity;
+	// </edit>
+
 	S32				mNumPendingQueries;
 	S32*			mActiveCacheQueries;
 
@@ -782,6 +801,11 @@ public:
 
 	LLFrameTimer mDoubleTapRunTimer;
 	EDoubleTapRunMode mDoubleTapRunMode;
+	
+	// <edit>
+	static void showLureDestination(const std::string fromname, const int global_x, const int global_y, const int x, const int y, const int z, const std::string maturity);
+	static void onFoundLureDestination();
+	// </edit>
 
 private:
 	bool mbTeleportKeepsLookAt; // try to keep look-at after teleport is complete
@@ -992,5 +1016,8 @@ private:
 };
 
 extern LLAgent gAgent;
-
+// <edit>
+extern LLUUID gReSitTargetID;
+extern LLVector3 gReSitOffset;
+// </edit>
 #endif

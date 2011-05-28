@@ -83,6 +83,7 @@
 
 #include "llagent.h"
 #include "llagentpilot.h"
+#include "llfloateravatarlist.h"
 #include "llfloateravatarpicker.h"
 #include "llcallbacklist.h"
 #include "llcallingcard.h"
@@ -172,6 +173,7 @@
 #include "llvoavatar.h"
 #include "llvoclouds.h"
 #include "llweb.h"
+#include "llwind.h"
 #include "llworld.h"
 #include "llworldmapmessage.h"
 #include "llxfermanager.h"
@@ -189,6 +191,16 @@
 #include "llwaterparammanager.h"
 #include "llagentlanguage.h"
 #include "llsocks5.h"
+#include "jcfloaterareasearch.h"
+
+// <edit>
+#include "llpanellogin.h"
+//#include "llfloateravatars.h"
+//#include "llactivation.h"
+#include "llao.h"
+#include "llfloaterblacklist.h"
+//#include "llcheats.h"
+// </edit>
 
 #if LL_WINDOWS
 #include "llwindebug.h"
@@ -210,6 +222,7 @@ std::string SCREEN_LAST_FILENAME = "screen_last.bmp";
 //
 extern S32 gStartImageWidth;
 extern S32 gStartImageHeight;
+extern bool gLLWindEnabled;
 
 //
 // local globals
@@ -713,6 +726,11 @@ void update_texture_fetch()
 	gImageList.updateImages(0.10f);
 }
 
+void hooked_process_sound_trigger(LLMessageSystem *msg, void **)
+{
+	process_sound_trigger(msg,NULL);
+	LLFloaterAvatarList::sound_trigger_hook(msg,NULL);
+}
 
 // Returns false to skip other idle processing. Should only return
 // true when all initialization done.
@@ -894,9 +912,9 @@ bool idle_startup()
 			if(!start_messaging_system(
 				   message_template_path,
 				   port,
-				   LL_VERSION_MAJOR,
-				   LL_VERSION_MINOR,
-				   LL_VERSION_PATCH,
+				   gSavedSettings.getU32("SpecifiedVersionMaj"),
+				   gSavedSettings.getU32("SpecifiedVersionMin"),
+				   gSavedSettings.getU32("SpecifiedVersionPatch"),
 				   FALSE,
 				   std::string(),
 				   responder,
@@ -1090,6 +1108,9 @@ bool idle_startup()
 			// We have at least some login information on a SLURL
 			firstname = gLoginHandler.getFirstName();
 			lastname = gLoginHandler.getLastName();
+			// <edit>
+			gFullName = utf8str_tolower(firstname + " " + lastname);
+			// </edit>
 			web_login_key = gLoginHandler.getWebLoginKey();
 
 			// Show the login screen if we don't have everything
@@ -1101,6 +1122,9 @@ bool idle_startup()
             LLSD cmd_line_login = gSavedSettings.getLLSD("UserLoginInfo");
 			firstname = cmd_line_login[0].asString();
 			lastname = cmd_line_login[1].asString();
+			// <edit>
+			gFullName = utf8str_tolower(firstname + " " + lastname);
+			// </edit>
 
 			LLMD5 pass((unsigned char*)cmd_line_login[2].asString().c_str());
 			char md5pass[33];               /* Flawfinder: ignore */
@@ -1118,6 +1142,9 @@ bool idle_startup()
 		{
 			firstname = gSavedSettings.getString("FirstName");
 			lastname = gSavedSettings.getString("LastName");
+			// <edit>
+			gFullName = utf8str_tolower(firstname + " " + lastname);
+			// </edit>
 			password = LLStartUp::loadPasswordFromDisk();
 			gSavedSettings.setBOOL("RememberPassword", TRUE);
 			
@@ -1133,6 +1160,9 @@ bool idle_startup()
 			// a valid grid is selected
 			firstname = gSavedSettings.getString("FirstName");
 			lastname = gSavedSettings.getString("LastName");
+			// <edit>
+			gFullName = utf8str_tolower(firstname + " " + lastname);
+			// </edit>
 			password = LLStartUp::loadPasswordFromDisk();
 			show_connect_box = true;
 		}
@@ -1224,6 +1254,9 @@ bool idle_startup()
 			else
 			{
 				LLPanelLogin::setFields(firstname, lastname, password, login_history);
+				// <edit>
+				gFullName = utf8str_tolower(firstname + " " + lastname);
+				// </edit>
 				LLPanelLogin::giveFocus();
 			}
 
@@ -1297,6 +1330,9 @@ bool idle_startup()
 		{
 			firstname = gLoginHandler.getFirstName();
 			lastname = gLoginHandler.getLastName();
+			// <edit>
+			gFullName = utf8str_tolower(firstname + " " + lastname);
+			// </edit>
 			web_login_key = gLoginHandler.getWebLoginKey();
 		}
 				
@@ -1315,6 +1351,9 @@ bool idle_startup()
 		{
 			gSavedSettings.setString("FirstName", firstname);
 			gSavedSettings.setString("LastName", lastname);
+			// <edit>
+			gFullName = utf8str_tolower(firstname + " " + lastname);
+			// </edit>
 			if (!gSavedSettings.controlExists("RememberLogin")) gSavedSettings.declareBOOL("RememberLogin", false, "Remember login", false);
 			gSavedSettings.setBOOL("RememberLogin", LLPanelLogin::getRememberLogin());
 
@@ -1372,7 +1411,11 @@ bool idle_startup()
 
 		std::string user_windlight_days_path_name(gDirUtilp->getExpandedFilename( LL_PATH_USER_SETTINGS , "windlight/days", ""));
 		LLFile::mkdir(user_windlight_days_path_name.c_str());
-
+		
+		// <edit>
+		LLAO::refresh();
+		LLFloaterBlacklist::loadFromSave();
+		// </edit>
 
 		if (show_connect_box)
 		{
@@ -1436,7 +1479,9 @@ bool idle_startup()
 		}
 
 		// Display the startup progress bar.
-		gViewerWindow->setShowProgress(TRUE);
+		// <edit>
+		//gViewerWindow->setShowProgress(TRUE);
+		// </edit>
 		gViewerWindow->setProgressCancelButtonVisible(TRUE, std::string("Quit")); // *TODO: Translate
 
 		// Poke the VFS, which could potentially block for a while if
@@ -1491,7 +1536,6 @@ bool idle_startup()
 		requested_options.push_back("buddy-list");
 		requested_options.push_back("ui-config");
 #endif
-		requested_options.push_back("map-server-url");
 		requested_options.push_back("tutorial_setting");
 		requested_options.push_back("login-flags");
 		requested_options.push_back("global-textures");
@@ -1662,6 +1706,15 @@ bool idle_startup()
 		hashed_mac.finalize();
 		hashed_mac.hex_digest(hashed_mac_string);
 
+		// <edit>
+		std::string my_mac = std::string(hashed_mac_string);
+		if(gSavedSettings.getBOOL("SpecifyMAC"))
+			my_mac = gSavedSettings.getString("SpecifiedMAC").c_str();
+		std::string my_id0 = LLAppViewer::instance()->getSerialNumber();
+		if(gSavedSettings.getBOOL("SpecifyID0"))
+			my_id0 = gSavedSettings.getString("SpecifiedID0");
+		// </edit>
+
 		LLViewerLogin* vl = LLViewerLogin::getInstance();
 		std::string grid_uri = vl->getCurrentGridURI();
 
@@ -1681,8 +1734,12 @@ bool idle_startup()
 			gAcceptCriticalMessage,
 			gLastExecEvent,
 			requested_options,
-			hashed_mac_string,
-			LLAppViewer::instance()->getSerialNumber());
+		// <edit>
+		//	hashed_mac_string,
+		//	LLAppViewer::instance()->getSerialNumber());
+			my_mac,
+			my_id0);
+		// </edit>
 
 		// reset globals
 		gAcceptTOS = FALSE;
@@ -2111,11 +2168,6 @@ bool idle_startup()
 			sInitialOutfitGender = LLUserAuth::getInstance()->mResult["initial-outfit"]["gender"].asString();
 			gAgent.setGenderChosen(TRUE); // OGPX TODO: remove this once we start sending back gendered flag
 
-			std::string map_server_url = LLUserAuth::getInstance()->mResult["map-server-url"].asString();
-			if(!map_server_url.empty())
-			{
-				gSavedSettings.setString("MapServerURL", map_server_url);
-			}
 		}
 
 		// XML-RPC successful login path here
@@ -2153,6 +2205,9 @@ bool idle_startup()
 			if(!text.empty()) lastname.assign(text);
 			gSavedSettings.setString("FirstName", firstname);
 			gSavedSettings.setString("LastName", lastname);
+			// <edit>
+			gFullName = utf8str_tolower(firstname + " " + lastname);
+			// </edit>
 
 			if (gSavedSettings.getBOOL("RememberPassword"))
 			{
@@ -2377,11 +2432,6 @@ bool idle_startup()
 				}
 			}
 
-			std::string map_server_url = LLUserAuth::getInstance()->getResponse("map-server-url");
-			if(!map_server_url.empty())
-			{
-				gSavedSettings.setString("MapServerURL", map_server_url);
-			}
 		}
 
 		// OGPX : successful login path common to OGP and XML-RPC
@@ -2443,6 +2493,9 @@ bool idle_startup()
 	//---------------------------------------------------------------------
 	if (STATE_WORLD_INIT == LLStartUp::getStartupState())
 	{
+		//first of all, let's check if wind should be used
+		gLLWindEnabled = gSavedSettings.getBOOL("WindEnabled");
+		
 		set_startup_status(0.40f, LLTrans::getString("LoginInitializingWorld"), gAgent.mMOTD);
 		display_startup();
 		// We should have an agent id by this point.
@@ -2547,11 +2600,20 @@ bool idle_startup()
 		LLRect window(0, gViewerWindow->getWindowHeight(), gViewerWindow->getWindowWidth(), 0);
 		gViewerWindow->adjustControlRectanglesForFirstUse(window);
 
-		if(gSavedSettings.getBOOL("ShowMiniMap"))
+		if (gSavedSettings.getBOOL("ShowMiniMap"))
 		{
 			LLFloaterMap::showInstance();
 		}
-
+		if (gSavedSettings.getBOOL("ShowRadar"))
+		{
+			LLFloaterAvatarList::showInstance();
+		}
+		// <edit>
+		else if (gSavedSettings.getBOOL("RadarKeepOpen"))
+		{
+			LLFloaterAvatarList::createInstance(false);
+		}
+		// </edit>
 		if (gSavedSettings.getBOOL("ShowCameraControls"))
 		{
 			LLFloaterCamera::showInstance();
@@ -2569,6 +2631,11 @@ bool idle_startup()
 		if (gSavedSettings.getBOOL("BeaconAlwaysOn"))
 		{
 			LLFloaterBeacons::showInstance();
+		}
+		
+		if (!gSavedSettings.getBOOL("CloudsEnabled") && !gNoRender)
+		{
+			LLPipeline::toggleRenderTypeControl((void*)LLPipeline::RENDER_TYPE_CLOUDS);
 		}
 
 		if (!gNoRender)
@@ -2875,6 +2942,19 @@ bool idle_startup()
  			}
  		}
 
+		// <edit> testing adding a local inventory folder...
+		LLViewerInventoryCategory* test_cat = new LLViewerInventoryCategory(gAgent.getID());
+		test_cat->rename(std::string("Pretend Inventory"));
+		LLUUID test_cat_id;
+		test_cat_id.generate();
+		test_cat->setUUID(test_cat_id);
+		gLocalInventoryRoot = test_cat_id;
+		test_cat->setParent(LLUUID::null);
+		test_cat->setPreferredType(LLAssetType::AT_NONE);
+
+		gInventory.addCategory(test_cat);
+		// </edit>
+
 		options.clear();
  		if(LLUserAuth::getInstance()->getOptions("buddy-list", options))
  		{
@@ -3128,7 +3208,7 @@ bool idle_startup()
 		gDisplaySwapBuffers = TRUE;
 
 		LLMessageSystem* msg = gMessageSystem;
-		msg->setHandlerFuncFast(_PREHASH_SoundTrigger,				process_sound_trigger);
+		msg->setHandlerFuncFast(_PREHASH_SoundTrigger,				hooked_process_sound_trigger);
 		msg->setHandlerFuncFast(_PREHASH_PreloadSound,				process_preload_sound);
 		msg->setHandlerFuncFast(_PREHASH_AttachedSound,				process_attached_sound);
 		msg->setHandlerFuncFast(_PREHASH_AttachedSoundGainChange,	process_attached_sound_gain_change);
@@ -3137,6 +3217,16 @@ bool idle_startup()
 
 		gRenderStartTime.reset();
 		gForegroundTime.reset();
+
+		if (gSavedSettings.getBOOL("FetchInventoryOnLogin")
+#ifdef LL_RRINTERFACE_H //MK
+			|| gRRenabled
+#endif //mk
+			)
+		{
+			// Fetch inventory in the background
+			gInventory.startBackgroundFetch();
+		}
 
 		// HACK: Inform simulator of window size.
 		// Do this here so it's less likely to race with RegisterNewAgent.
@@ -3373,6 +3463,16 @@ bool idle_startup()
 		LLUserAuth::getInstance()->reset();
 
 		LLStartUp::setStartupState( STATE_STARTED );
+
+		if (gSavedSettings.getBOOL("SpeedRez"))
+		{
+			// Speed up rezzing if requested.
+			F32 dist1 = gSavedSettings.getF32("RenderFarClip");
+			F32 dist2 = gSavedSettings.getF32("SavedRenderFarClip");
+			gSavedDrawDistance = (dist1 >= dist2 ? dist1 : dist2);
+			gSavedSettings.setF32("SavedRenderFarClip", gSavedDrawDistance);
+			gSavedSettings.setF32("RenderFarClip", 32.0f);
+		}
 
 		// Unmute audio if desired and setup volumes.
 		// Unmute audio if desired and setup volumes.
@@ -3789,7 +3889,10 @@ bool update_dialog_callback(const LLSD& notification, const LLSD& response)
 	// *TODO change userserver to be grid on both viewer and sim, since
 	// userserver no longer exists.
 	query_map["userserver"] = LLViewerLogin::getInstance()->getGridLabel();
-	query_map["channel"] = gSavedSettings.getString("VersionChannelName");
+	// <edit>
+	//query_map["channel"] = gSavedSettings.getString("VersionChannelName");
+	query_map["channel"] = gSavedSettings.getString("SpecifiedChannel");
+	// </edit>
 	// *TODO constantize this guy
 	// *NOTE: This URL is also used in win_setup/lldownloader.cpp
 	LLURI update_url = LLURI::buildHTTP("secondlife.com", 80, "update.php", query_map);
@@ -3901,6 +4004,13 @@ void use_circuit_callback(void**, S32 result)
 	}
 }
 
+void pass_processObjectPropertiesFamily(LLMessageSystem *msg, void**)
+{
+	// Send the result to the corresponding requesters.
+	LLSelectMgr::processObjectPropertiesFamily(msg, NULL);
+	JCFloaterAreaSearch::processObjectPropertiesFamily(msg, NULL);
+}
+
 void register_viewer_callbacks(LLMessageSystem* msg)
 {
 	msg->setHandlerFuncFast(_PREHASH_LayerData,				process_layer_data );
@@ -3944,7 +4054,7 @@ void register_viewer_callbacks(LLMessageSystem* msg)
 	msg->setHandlerFuncFast(_PREHASH_ImprovedInstantMessage,	process_improved_im);
 	msg->setHandlerFuncFast(_PREHASH_ScriptQuestion,			process_script_question);
 	msg->setHandlerFuncFast(_PREHASH_ObjectProperties,			LLSelectMgr::processObjectProperties, NULL);
-	msg->setHandlerFuncFast(_PREHASH_ObjectPropertiesFamily,	LLSelectMgr::processObjectPropertiesFamily, NULL);
+	msg->setHandlerFuncFast(_PREHASH_ObjectPropertiesFamily,	pass_processObjectPropertiesFamily, NULL);
 	msg->setHandlerFunc("ForceObjectSelect", LLSelectMgr::processForceObjectSelect);
 
 	msg->setHandlerFuncFast(_PREHASH_MoneyBalanceReply,		process_money_balance_reply,	NULL);
@@ -4385,22 +4495,30 @@ void apply_udp_blacklist(const std::string& csv)
 
 bool LLStartUp::handleSocksProxy(bool reportOK)
 {
-	std::string httpProxyType = gSavedSettings.getString("Socks5HttpProxyType");
+	bool use_http_proxy = gSavedSettings.getBOOL("BrowserProxyEnabled");
+	if (use_http_proxy)
+	{
+		std::string httpProxyType = gSavedSettings.getString("Socks5HttpProxyType");
 
-	// Determine the http proxy type (if any)
-	if ((httpProxyType.compare("Web") == 0) && gSavedSettings.getBOOL("BrowserProxyEnabled"))
-	{
-		LLHost httpHost;
-		httpHost.setHostByName(gSavedSettings.getString("BrowserProxyAddress"));
-		httpHost.setPort(gSavedSettings.getS32("BrowserProxyPort"));
-		LLSocks::getInstance()->EnableHttpProxy(httpHost,LLPROXY_HTTP);
-	}
-	else if ((httpProxyType.compare("Socks") == 0) && gSavedSettings.getBOOL("Socks5ProxyEnabled"))
-	{
-		LLHost httpHost;
-		httpHost.setHostByName(gSavedSettings.getString("Socks5ProxyHost"));
-		httpHost.setPort(gSavedSettings.getU32("Socks5ProxyPort"));
-		LLSocks::getInstance()->EnableHttpProxy(httpHost,LLPROXY_SOCKS);
+		// Determine the http proxy type (if any)
+		if (httpProxyType.compare("Web") == 0)
+		{
+			LLHost httpHost;
+			httpHost.setHostByName(gSavedSettings.getString("BrowserProxyAddress"));
+			httpHost.setPort(gSavedSettings.getS32("BrowserProxyPort"));
+			LLSocks::getInstance()->EnableHttpProxy(httpHost,LLPROXY_HTTP);
+		}
+		else if (httpProxyType.compare("Socks") == 0)
+		{
+			LLHost httpHost;
+			httpHost.setHostByName(gSavedSettings.getString("Socks5ProxyHost"));
+			httpHost.setPort(gSavedSettings.getS32("Socks5ProxyPort"));
+			LLSocks::getInstance()->EnableHttpProxy(httpHost,LLPROXY_SOCKS);
+		}
+		else
+		{
+			LLSocks::getInstance()->DisableHttpProxy();
+		}
 	}
 	else
 	{

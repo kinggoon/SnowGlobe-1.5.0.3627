@@ -43,7 +43,7 @@ class LLThread;
 class LLMutex;
 class LLCondition;
 
-class LL_COMMON_API LLThread
+class LLThread
 {
 public:
 	typedef enum e_thread_status
@@ -125,7 +125,7 @@ protected:
 
 //============================================================================
 
-class LL_COMMON_API LLMutex
+class LLMutex
 {
 public:
 	LLMutex(apr_pool_t *apr_poolp); // NULL pool constructs a new pool for the mutex
@@ -145,7 +145,7 @@ protected:
 };
 
 // Actually a condition/mutex pair (since each condition needs to be associated with a mutex).
-class LL_COMMON_API LLCondition : public LLMutex
+class LLCondition : public LLMutex
 {
 public:
 	LLCondition(apr_pool_t *apr_poolp); // Defaults to global pool, could use the thread pool as well.
@@ -159,7 +159,7 @@ protected:
 	apr_thread_cond_t *mAPRCondp;
 };
 
-class LL_COMMON_API LLMutexLock
+class LLMutexLock
 {
 public:
 	LLMutexLock(LLMutex* mutex)
@@ -192,7 +192,7 @@ void LLThread::unlockData()
 
 // see llmemory.h for LLPointer<> definition
 
-class LL_COMMON_API LLThreadSafeRefCount
+class LLThreadSafeRefCount
 {
 public:
 	static void initThreadSafeRefCount(); // creates sMutex
@@ -244,7 +244,7 @@ private:
 
 // Simple responder for self destructing callbacks
 // Pure virtual class
-class LL_COMMON_API LLResponder : public LLThreadSafeRefCount
+class LLResponder : public LLThreadSafeRefCount
 {
 protected:
 	virtual ~LLResponder();
